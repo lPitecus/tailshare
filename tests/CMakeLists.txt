@@ -58,6 +58,7 @@ if(TARGET tailshareitemaction)
     target_compile_definitions(plugintest PRIVATE
         FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/fixtures"
         PLUGIN_PATH="$<TARGET_FILE:tailshareitemaction>"
+        PROJECT_VERSION="${PROJECT_VERSION}"
     )
     add_dependencies(plugintest tailshareitemaction)
     add_test(NAME plugintest COMMAND plugintest)

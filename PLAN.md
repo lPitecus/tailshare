@@ -597,6 +597,34 @@ o `sha256` baixado de novo é o mesmo que está no `PKGBUILD`.
 **Pronto:** o projeto está público, com versão marcada, pacote de release
 verificável e pacote de desenvolvimento para quem quiser acompanhar o `main`.
 
+### Fase 8 — Fluxo de release (em andamento)
+Pedida depois da publicação, para tornar release e modificação fluidos sem
+abandonar o semver. O que foi entregue:
+
+- **A versão passou a ter um dono só.** Ela estava em três lugares que
+  precisavam concordar à mão (`CMakeLists.txt`, `pkgver` do `PKGBUILD`, a tag).
+  Agora o `src/plugin/tailshareitemaction.json` é gerado de
+  `tailshareitemaction.json.in` por `configure_file`, com
+  `"Version": "@PROJECT_VERSION@"` — e o `plugintest` compara
+  `KPluginMetaData::version()` com o `PROJECT_VERSION` do build, então binário e
+  build não podem discordar sem o teste acusar. De quebra, o plugin instalado
+  passou a dizer qual versão é: antes só o `pacman` sabia.
+- **`CHANGELOG.md`** no formato *Keep a Changelog*, com a `0.1.0` preenchida e a
+  regra do `0.x` escrita no cabeçalho.
+- **`tools/release.sh`**, que faz os nove passos manuais do primeiro release num
+  comando. As recusas foram testadas: sem argumento, versão malformada e árvore
+  suja param antes de escrever qualquer coisa.
+- **CI no GitHub Actions** (`.github/workflows/build.yml`): build e `ctest` num
+  contêiner Arch a cada push e PR, um job com ASan/UBSan, e um job que só roda
+  em tag e constrói o `PKGBUILD` de release — o que prova, numa máquina que
+  nunca viu o projeto, que o `sha256` bate com o tarball que o GitHub serve.
+- **As regras viraram texto no `CLAUDE.md`**: dono único da versão, semver com a
+  regra do `0.x`, `pkgrel` para mudança só de empacotamento, e o `CHANGELOG`
+  atualizado no mesmo commit do código.
+
+**Falta:** ver o CI passar de verdade. Um workflow que nunca rodou é suposição,
+não verificação.
+
 ---
 
 ## 7. Dependências

@@ -186,6 +186,9 @@ private Q_SLOTS:
         // Both are mandatory: every regular file inherits application/octet-stream,
         // but inode/directory does not, so folders need their own entry.
         QCOMPARE(data.mimeTypes(), QStringList({QStringLiteral("application/octet-stream"), QStringLiteral("inode/directory")}));
+        // Generated from project(), so this is the whole point of generating it:
+        // the binary and the build cannot disagree about which version it is.
+        QCOMPARE(data.version(), QStringLiteral(PROJECT_VERSION));
         // The item belongs in the main menu, not under "Actions".
         QVERIFY(!data.rawData().contains(QLatin1String("X-KDE-Show-In-Submenu")));
     }

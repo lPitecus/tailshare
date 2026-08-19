@@ -14,6 +14,7 @@
             "inode/directory"
         ],
         "Name": "Share via Tailscale",
+        "Version": "@PROJECT_VERSION@",
         "Name[pt_BR]": "Compartilhar pelo Tailscale"
     }
 }

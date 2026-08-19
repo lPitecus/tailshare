@@ -26,6 +26,32 @@ código.** O que registrar:
 Vale para os artefatos derivados também: se o `README` descreve o que mudou,
 ele acompanha.
 
+## Versão e releases
+
+**A versão tem um dono só: `project(tailshare VERSION ...)` no
+`CMakeLists.txt`.** O campo `Version` dos metadados do plugin é gerado dali por
+`configure_file`, e o `PKGBUILD` recebe o número pelo script de release. Nunca
+edite os três à mão — se eles discordarem, o pacote instala uma versão dizendo
+outra, e nada acusa.
+
+**Semver, com a regra do `0.x`:** enquanto o projeto estiver abaixo de `1.0.0`,
+mudança **incompatível bumpa o minor** (`0.1.0` → `0.2.0`) e correção bumpa o
+patch (`0.1.1`). O `1.0.0` está reservado para o release em que uma
+transferência sobrevive ao fechamento do Dolphin — a única promessa que a v1 não
+consegue fazer.
+
+**Mudança só de empacotamento não mexe no `pkgver`.** Dependência nova, correção
+no `PKGBUILD`: bumpa o `pkgrel`, que é do Arch e não do projeto.
+
+**Todo release sai por `tools/release.sh <versão>`**, nunca à mão. Ele recusa
+árvore suja, branch fora da `main`, divergência com o remoto, tag existente e
+`CHANGELOG.md` sem nada em `[Unreleased]`; e só publica depois de a suíte
+passar.
+
+**Toda mudança visível ao usuário entra no `CHANGELOG.md` sob `[Unreleased]`, no
+mesmo commit do código** — mesma regra do `PLAN.md`, pelo mesmo motivo. É de lá
+que saem as notas do release e a decisão de major, minor ou patch.
+
 <!-- ai-memory:start -->
 ## Long-term memory (ai-memory)
 

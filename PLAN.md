@@ -540,7 +540,8 @@ senão todo envio é recusado com `Access denied` (3.5).
 ## 9. Pontos ainda em aberto
 
 As seis perguntas da versão anterior foram todas respondidas e viraram linhas da
-seção 1. Restam dois pontos:
+seção 1. Com as duas fixtures conferidas na Fase 5, resta um ponto — e ele não
+tem código atrás:
 
 1. **Estado com login pendente** — o `AuthURL` foi observado **vazio** logo após
    o `logout` (3.8). Falta ver o estado intermediário, com um `tailscale up`

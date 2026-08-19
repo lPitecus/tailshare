@@ -86,22 +86,35 @@ private Q_SLOTS:
     {
         QTest::addColumn<QString>("file");
         QTest::addColumn<QString>("backendState");
+        QTest::addColumn<int>("deviceCount");
 
-        QTest::newRow("needs login") << QStringLiteral("needs-login.json") << QStringLiteral("NeedsLogin");
-        QTest::newRow("stopped") << QStringLiteral("stopped.json") << QStringLiteral("Stopped");
+        QTest::newRow("needs login") << QStringLiteral("needs-login.json") << QStringLiteral("NeedsLogin") << 0;
+        // A stopped backend still lists the whole tailnet, with the peers'
+        // Online flags frozen at whatever they were: measured on this machine
+        // by capturing "tailscale status --json" during a real "tailscale
+        // down". What changes is every peer's TaildropTarget, which becomes
+        // IpnStateNotRunning.
+        QTest::newRow("stopped") << QStringLiteral("stopped.json") << QStringLiteral("Stopped") << 4;
     }
 
     void readsBackendStates()
     {
         QFETCH(QString, file);
         QFETCH(QString, backendState);
+        QFETCH(int, deviceCount);
 
         const Status status = parseStatus(fixture(file));
 
         QVERIFY(status.valid);
         QCOMPARE(status.backendState, backendState);
         QVERIFY(!status.isRunning());
-        QVERIFY(status.devices.isEmpty());
+        QCOMPARE(status.devices.size(), deviceCount);
+        // The invariant that matters, whatever the backend chose to report:
+        // with it not running, nothing on the list can be sent to.
+        for (const Device &device : status.devices) {
+            QVERIFY(!device.canReceiveFiles());
+            QCOMPARE(device.taildropTarget, TaildropTarget::IpnStateNotRunning);
+        }
     }
 
     void handlesTailnetWithoutPeers()

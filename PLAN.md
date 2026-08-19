@@ -123,11 +123,12 @@ real desta máquina:
 | Peer sem `DNSName` é inendereçável | decisão tomada ao escrever o parser; `sendTarget()` sai vazio nesse caso | O parser descarta esses peers em vez de deixar no menu um item que nunca enviaria |
 | `qInfo()`/`qDebug()` saem silenciados neste ambiente | binário de teste sem saída até trocar por `QTextStream` | O `tailshare-probe` da Fase 2 deve escrever em `stdout` direto, ou o log não aparece |
 
-**Suposição ainda não confirmada**, que vira item da Fase 5: assumimos que
-`BackendState` `Stopped` e `NeedsLogin` vêm com `Peer: null` — as fixtures foram
-escritas assim, mas isso **não** foi observado num `tailscale down` real. O
-código não depende disso (o menu já some quando o estado não é `Running`), mas a
-fixture precisa ser conferida contra a saída verdadeira.
+**Suposição desmentida na Fase 5** (ver 3.8): assumíamos que `BackendState`
+`Stopped` e `NeedsLogin` vinham com `Peer: null`, e as fixtures foram escritas
+assim. Um `tailscale down` real mostrou o contrário para `Stopped` — a tailnet
+inteira continua listada. A fixture `stopped.json` foi refeita a partir da
+captura verdadeira. Como já se previa aqui, o código não dependia disso: o menu
+some porque o estado não é `Running`, e não porque a lista está vazia.
 
 Um ponto **não confirmado**, que vira item de teste da Fase 3: seleção mista de
 *arquivo + pasta*. Nesse caso `commonMimeType` fica vazio e `isFile()` é falso,
@@ -187,6 +188,17 @@ menu já não oferecer dispositivo que o Taildrop diz inalcançável.
 | O `makepkg` **reescreve a linha `pkgver=`** do PKGBUILD no diretório de origem | o arquivo versionado saiu do commit `af175e4` já com `0.1.0.r14.af175e4`, valor que o `pkgver()` calculou naquela execução | Comportamento documentado (`PKGBUILD(5)`, *"The pkgver variable can be automatically updated by providing a pkgver() function"*) e normal em pacote VCS. Consequência prática: todo `makepkg` suja o repositório em uma linha — é para commitar junto, não para reverter |
 | `gettext` sobrava no `makedepends` | `pacman -Si base-devel` lista `gettext` entre as dependências do meta-pacote, e a wiki do Arch diz que o `base-devel` é presumido instalado e seus membros não devem entrar no `makedepends` | Removido, com comentário no PKGBUILD explicando de onde vem o `msgfmt`. `git` e `cmake` continuam: nenhum dos dois está no `base-devel`, e as diretrizes de VCS exigem o `git` explícito |
 | O `makepkg` deixa um clone *bare* em `packaging/tailshare/` | apareceu como não rastreado no `git status` depois do primeiro `makepkg` | Entrou no `.gitignore`. Comentário de fim de linha **não** funciona em `.gitignore`: a primeira tentativa virou parte do padrão e o diretório continuou aparecendo |
+
+### 3.8 Achados durante a implementação (Fase 5)
+
+| Fato | Como foi verificado | Consequência |
+|---|---|---|
+| Com o backend **parado**, o `status --json` continua listando **a tailnet inteira**, e não `Peer: null` | `tailscale down` nesta máquina, `tailscale status --json` capturado em seguida e `tailscale up` para restaurar: 4 peers presentes | ⚠️ Corrige 3.4 e a fixture `stopped.json`, que foi refeita com a forma real |
+| O que muda no estado parado é o `TaildropTarget` de **cada peer**, que vira `3` (`IpnStateNotRunning`) | mesma captura: os 4 peers vêm com `TaildropTarget: 3`, contra `1` (online) e `5` (offline) na captura feita segundos antes com a rede no ar | O motivo mostrado ao usuário seria *"Tailscale is not running."*, coerente com o estado — mas o menu nem chega a aparecer |
+| O `Online` dos peers **congela** no último valor conhecido quando o backend para | na captura parada, `iphone-9` e `home-nas` seguem `Online: true` | Confirma que `Online` sozinho não serve de critério; quem decide é o `TaildropTarget`, como o parser já fazia |
+| `Self.TaildropTarget` é `0` (`Unknown`) nos dois estados | capturas com a rede no ar e parada | A fixture antiga dizia `3` para o `Self`; era palpite. O `Self` não entra na lista de destinos de qualquer forma |
+| O `statusparsertest` afirmava `devices.isEmpty()` para `Stopped` | com a fixture verdadeira o teste **falhou** | A afirmação era da suposição, não do comportamento. Agora o teste espera os 4 dispositivos e verifica o que de fato importa: nenhum deles pode receber, e todos reportam `IpnStateNotRunning` |
+| O submenu some por causa do **estado**, não da lista vazia | o `plugintest staysAwayWhenTheBackendIsNotRunning(stopped)` continua passando com a fixture nova, que tem 4 dispositivos | Antes o teste não sabia distinguir as duas causas; agora sabe |
 
 ## 4. Arquitetura
 
@@ -501,9 +513,10 @@ senão todo envio é recusado com `Access denied` (3.5).
 As seis perguntas da versão anterior foram todas respondidas e viraram linhas da
 seção 1. Restam dois pontos:
 
-1. **Fixtures de `Stopped` e `NeedsLogin`** — escritas com `Peer: null` por
-   suposição, ainda não conferidas contra um `tailscale down` real (ver 3.4).
-   Item da Fase 5.
+1. **Fixture de `NeedsLogin`** — escrita com `Self: null` e `Peer: null` por
+   suposição, ainda não conferida contra um `tailscale logout` real. Item da
+   Fase 5. A irmã `stopped.json` foi conferida e **estava errada** (3.8), o que
+   é motivo de sobra para não confiar nesta.
 
 Resolvidos desde a versão anterior:
 

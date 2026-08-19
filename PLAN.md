@@ -199,6 +199,9 @@ menu já não oferecer dispositivo que o Taildrop diz inalcançável.
 | `Self.TaildropTarget` é `0` (`Unknown`) nos dois estados | capturas com a rede no ar e parada | A fixture antiga dizia `3` para o `Self`; era palpite. O `Self` não entra na lista de destinos de qualquer forma |
 | O `statusparsertest` afirmava `devices.isEmpty()` para `Stopped` | com a fixture verdadeira o teste **falhou** | A afirmação era da suposição, não do comportamento. Agora o teste espera os 4 dispositivos e verifica o que de fato importa: nenhum deles pode receber, e todos reportam `IpnStateNotRunning` |
 | Backend derrubado **no meio de um envio** não gera erro: o `tailscale file cp` **bloqueia e retoma** quando a rede volta | reproduzido nesta máquina com o `tailshare-probe` e 300 MB para o `home-tuzin`: envio às 18:47:53, `tailscale down` às 18:47:56 (backend `Stopped`), processo ainda vivo 15 s depois, `tailscale up` às 18:48:11, e `succeeded` às 18:48:24 — 31,5 s no total, dos quais ~15 s de rede no chão. O usuário tinha observado o mesmo pelo menu do Dolphin | Confirma, com evidência, a decisão de 3.5 de deixar o timeout do `SendJob` **desligado**: um timeout curto teria matado uma transferência que ia terminar bem. Também explica o que o usuário vê — a notificação *Enviando* fica parada, sem erro, até a rede voltar |
+| `NeedsLogin` **também** não vem com `Self`/`Peer` nulos | `tailscale logout` real nesta máquina: `Self` é objeto com `DNSName` vazio e `TaildropTarget: 0`; `Peer` traz **uma** entrada residual do engine, com `HostName`, `DNSName` e `OS` vazios, `InNetworkMap: false`, `InEngine: true` e os contadores `RxBytes`/`TxBytes` da última transferência | ⚠️ Segunda fixture desmentida. A `needs-login.json` foi refeita com a forma real |
+| O `AuthURL` vem **vazio** logo após o `logout` | mesma captura: `"AuthURL": ""`, ao contrário da fixture antiga, que trazia uma URL de login | A URL provavelmente aparece com um `tailscale up` pendente de autenticação, mas **isso não foi observado** — a fixture registra só o estado que foi visto |
+| A lista de dispositivos continua vazia em `NeedsLogin`, por outro motivo | a suíte passa sem alteração com a fixture nova | Antes era vazia porque `Peer` era `null`; agora é vazia porque o peer residual não tem `DNSName` e o parser o descarta, que é a regra de 3.4 — o comportamento certo, pelo motivo certo |
 | O submenu some por causa do **estado**, não da lista vazia | o `plugintest staysAwayWhenTheBackendIsNotRunning(stopped)` continua passando com a fixture nova, que tem 4 dispositivos | Antes o teste não sabia distinguir as duas causas; agora sabe |
 
 ## 4. Arquitetura
@@ -485,7 +488,12 @@ dispositivo com Taildrop desabilitado e de uma tailnet só com o self: seguem
 cobertos apenas por teste automatizado, e o README diz isso em vez de deixar
 parecer verificado.
 
-**Falta:** a fixture `needs-login.json`, que exige um `tailscale logout` real.
+A fixture `needs-login.json` foi refeita a partir de um `tailscale logout` real
+e também estava errada (3.8) — duas de duas.
+
+**Falta:** olhar o menu do Dolphin com a sessão deslogada. A Fase 3 observou o
+submenu sumindo com `tailscale down` (`Stopped`); `NeedsLogin` é outro estado e
+nunca foi visto no Dolphin real.
 
 Roteiro fechado: arquivo único, múltiplos arquivos, pasta, pasta grande, nome com
 espaços e acentos, peer offline, peer sem Taildrop, tailnet só com self,
@@ -532,10 +540,11 @@ senão todo envio é recusado com `Access denied` (3.5).
 As seis perguntas da versão anterior foram todas respondidas e viraram linhas da
 seção 1. Restam dois pontos:
 
-1. **Fixture de `NeedsLogin`** — escrita com `Self: null` e `Peer: null` por
-   suposição, ainda não conferida contra um `tailscale logout` real. Item da
-   Fase 5. A irmã `stopped.json` foi conferida e **estava errada** (3.8), o que
-   é motivo de sobra para não confiar nesta.
+1. **Estado com login pendente** — o `AuthURL` foi observado **vazio** logo após
+   o `logout` (3.8). Falta ver o estado intermediário, com um `tailscale up`
+   esperando autenticação no navegador, onde a URL provavelmente aparece.
+   Nenhum caminho de código depende do `AuthURL`, então isto é curiosidade
+   documentada, não risco.
 
 Resolvidos desde a versão anterior:
 

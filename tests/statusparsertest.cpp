@@ -88,6 +88,13 @@ private Q_SLOTS:
         QTest::addColumn<QString>("backendState");
         QTest::addColumn<int>("deviceCount");
 
+        // Logged out, the daemon still answers with a Self and a Peer map: the
+        // Self has an empty DNSName, and the single peer is a leftover of the
+        // engine with every field empty but the byte counters of the last
+        // transfer. Captured on this machine during a real "tailscale logout".
+        // No device comes out of it, but for the reason in 3.4 -- a peer with
+        // no DNSName is unaddressable and gets dropped -- and not because the
+        // map is empty.
         QTest::newRow("needs login") << QStringLiteral("needs-login.json") << QStringLiteral("NeedsLogin") << 0;
         // A stopped backend still lists the whole tailnet, with the peers'
         // Online flags frozen at whatever they were: measured on this machine

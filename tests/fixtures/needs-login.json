@@ -1,7 +1,31 @@
 {
   "Version": "1.102.2",
   "BackendState": "NeedsLogin",
-  "AuthURL": "https://login.tailscale.com/a/0123456789ab",
-  "Self": null,
-  "Peer": null
+  "AuthURL": "",
+  "Self": {
+    "PublicKey": "nodekey:0000000000000000000000000000000000000000000000000000000000000000",
+    "HostName": "workstation",
+    "DNSName": "",
+    "OS": "linux",
+    "TailscaleIPs": null,
+    "Online": false,
+    "TaildropTarget": 0,
+    "NoFileSharingReason": ""
+  },
+  "Peer": {
+    "nodekey:5555555555555555555555555555555555555555555555555555555555555555": {
+      "PublicKey": "nodekey:5555555555555555555555555555555555555555555555555555555555555555",
+      "HostName": "",
+      "DNSName": "",
+      "OS": "",
+      "TailscaleIPs": null,
+      "RxBytes": 12387388,
+      "TxBytes": 1167007004,
+      "Online": false,
+      "TaildropTarget": 0,
+      "NoFileSharingReason": "",
+      "InNetworkMap": false,
+      "InEngine": true
+    }
+  }
 }

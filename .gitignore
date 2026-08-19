@@ -1,0 +1,46 @@
+# --- Build ---
+build/
+build-*/
+cmake-build-*/
+_deps/
+install/
+CMakeCache.txt
+CMakeFiles/
+CMakeUserPresets.json
+cmake_install.cmake
+CTestTestfile.cmake
+Testing/
+compile_commands.json
+*.o
+*.so
+*.so.*
+*.a
+*.moc
+moc_*.cpp
+qrc_*.cpp
+ui_*.h
+
+# --- i18n (gerados a partir dos .po) ---
+*.mo
+*.pot
+
+# --- Empacotamento (makepkg) ---
+packaging/pkg/
+packaging/src/
+packaging/*.pkg.tar.*
+packaging/*.tar.gz
+
+# --- Editores / IDEs ---
+.vscode/
+.idea/
+.cache/
+*.kdev4
+.kdev4/
+*.swp
+*~
+
+# --- Sistema ---
+.DS_Store
+
+# --- Local, nunca versionado ---
+.claude/settings.local.json

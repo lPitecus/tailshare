@@ -1,4 +1,4 @@
-# Maintainer: Arthur Silva <arthur.silva@serutil.com>
+# Maintainer: Arthur Silva <tuzaum.silva@gmail.com>
 #
 # Builds the current main branch. There is no release tag yet, so the version
 # is the one in CMakeLists.txt plus the commit this package was built from.

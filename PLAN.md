@@ -4,6 +4,9 @@ Plugin nativo do KDE Plasma que adiciona um submenu **"Share via Tailscale"** ao
 menu de contexto do Dolphin, listando os dispositivos da tailnet aptos a receber
 arquivos e enviando via Taildrop (`tailscale file cp`).
 
+**Estado:** Fases 0 e 1 concluídas (`4efe033`). Próximo passo: Fase 2 — `SendJob`
+validado fora da UI pelo `tools/tailshare-probe`.
+
 ---
 
 ## 1. Decisões travadas
@@ -104,6 +107,26 @@ Quatro afirmações da primeira versão estavam erradas ou imprecisas:
    nome e um texto solto de status. `status --json` é estritamente superior:
    traz `OS`, `Online` e o enum estruturado. Decisão mantida, agora fundamentada.
 
+### 3.4 Achados durante a implementação (Fase 1)
+
+Verificados ao escrever o núcleo, todos contra o binário v1.102.2 e a tailnet
+real desta máquina:
+
+| Fato | Como foi verificado | Consequência |
+|---|---|---|
+| iOS e Android reportam `HostName: "localhost"` | `status --json` desta tailnet: 2 dos 4 peers | `Device::displayName()` cai para o primeiro label do `DNSName` (`iphone172`, `tcl-smart-tv-pro`) quando o host name é vazio ou `localhost` — sem isso o menu teria itens repetidos |
+| `tailscale file cp -- <arquivos> <alvo>:` é aceito e o `--` é consumido | executado contra o binário real | `--` entra no argv: arquivo chamado `-v` continua sendo arquivo, sem depender de caminho absoluto |
+| Valores do enum confirmados em dados reais: `1` = `Available`, `5` = `Offline` | peers online/offline da tailnet | A ordem documentada em 3.1 está correta; valor desconhecido degrada para `Unknown`, nunca crasha |
+| `waitForStarted()` + `waitForFinished()` cobram o timeout **cada um** | leitura da API do `QProcess` | O orçamento de 300 ms é medido com `QElapsedTimer` sobre a chamada inteira, não por espera |
+| Peer sem `DNSName` é inendereçável | decisão tomada ao escrever o parser; `sendTarget()` sai vazio nesse caso | O parser descarta esses peers em vez de deixar no menu um item que nunca enviaria |
+| `qInfo()`/`qDebug()` saem silenciados neste ambiente | binário de teste sem saída até trocar por `QTextStream` | O `tailshare-probe` da Fase 2 deve escrever em `stdout` direto, ou o log não aparece |
+
+**Suposição ainda não confirmada**, que vira item da Fase 5: assumimos que
+`BackendState` `Stopped` e `NeedsLogin` vêm com `Peer: null` — as fixtures foram
+escritas assim, mas isso **não** foi observado num `tailscale down` real. O
+código não depende disso (o menu já some quando o estado não é `Running`), mas a
+fixture precisa ser conferida contra a saída verdadeira.
+
 Um ponto **não confirmado**, que vira item de teste da Fase 3: seleção mista de
 *arquivo + pasta*. Nesse caso `commonMimeType` fica vazio e `isFile()` é falso,
 então o fallback do KIO não se aplica; o casamento passa a depender de
@@ -124,24 +147,28 @@ Um artefato instalável (o plugin) sobre uma lib de núcleo testável. O envio r
                                    └── usa libtailshare_core (estática, sem UI)
 ```
 
-### 4.1 `libtailshare_core` (estática, sem dependência de UI)
+### 4.1 `libtailshare_core` (estática, sem dependência de UI) — ✅ implementada
 
-- `TailscaleClient` — executa `tailscale status --json` com timeout; devolve
-  `BackendState` + lista de peers. Zero regra de negócio.
-- `Device` — `hostname`, `dnsName`, `os`, `online`, `taildropTarget`,
-  `noFileSharingReason`.
-- `DeviceList::eligible()/sorted()` — filtro e ordenação online-primeiro/alfabética.
-- `TaildropReason` — mapeia o enum `TaildropTargetStatus` para uma string i18n
-  nossa (ver 3.1); o texto cru do backend nunca vai direto para a UI.
-- `SendPlan::build()` — decide o que é enviado: sem pasta na seleção, os arquivos
-  vão crus num único `cp`; havendo qualquer pasta, tudo vira um ZIP só. Devolve
-  também o `argv` do `tailscale file cp`. Sem `system()`, sem string de shell:
-  `QProcess` com lista de argumentos (nome com espaço ou aspas fica seguro por
-  construção).
+Depende só de `Qt6::Core` e `KF6::I18n`. Cada arquivo tem uma responsabilidade:
 
-Nome do ZIP único: uma pasta sozinha → `<nome-da-pasta>.zip`; seleção com vários
-itens → `<nome-da-pasta-pai>.zip`, caindo para `tailshare-<AAAAMMDD-HHMMSS>.zip`
-quando o pai não der um nome útil.
+| Arquivo | O que faz |
+|---|---|
+| `device.h/cpp` | `Device` (`hostName`, `dnsName`, `os`, `online`, `taildropTarget`, `noFileSharingReason`) + enum `TaildropTarget` e `taildropTargetFromValue()`. Métodos: `displayName()`, `sendTarget()`, `canReceiveFiles()` |
+| `statusparser.h/cpp` | `parseStatus(QByteArray)` → `Status{valid, error, backendState, devices}`. **Separado do cliente de propósito**: é o que permite testar todo o parsing por fixture, sem processo nem tailnet |
+| `devices.h/cpp` | `Devices::eligible()` e `Devices::sorted()`. `sorted()` usa `QCollator` (case-insensitive, ciente de locale); `eligible()` preserva a ordem de entrada, então quem quiser as duas coisas compõe as chamadas |
+| `taildropreason.h/cpp` | `taildropReasonText()` — enum → string i18n nossa (ver 3.1); o texto cru do backend nunca vai para a UI |
+| `tailscaleclient.h/cpp` | Executa o comando e devolve `Status`. `program`/`arguments`/`timeout` são injetáveis — é assim que os testes trocam o tailscale por `/bin/cat` lendo fixture ou por um `sh -c 'sleep 5'` para exercitar o timeout |
+| `sendplan.h/cpp` | `SendPlan::build(paths, device, now)` → `needsArchive()`, `archiveFileName()`, `filesToSend(zip)`, `commandArguments(zip)`. O `now` é injetável para o nome de fallback ser testável |
+
+Sem `system()`, sem string de shell: `QProcess` com lista de argumentos, e `--`
+antes dos caminhos (ver 3.4), então nome com espaço, acento, aspas ou traço
+inicial fica seguro por construção. `commandArguments()` devolve **vazio** quando
+o plano exige ZIP e ninguém passou o caminho dele — não existe comando legítimo
+nesse estado.
+
+Nome do ZIP único (implementado como planejado): uma pasta sozinha →
+`<nome-da-pasta>.zip`; seleção com vários itens → `<nome-da-pasta-pai>.zip`,
+caindo para `tailshare-<AAAAMMDD-HHMMSS>.zip` quando o pai não der um nome útil.
 
 ### 4.2 `tailshareitemaction.so` (o plugin)
 
@@ -196,12 +223,12 @@ tailshare/
 ├── README.md
 ├── PLAN.md
 ├── src/
-│   ├── core/                     # libtailshare_core + CMakeLists
+│   ├── core/                     # ✅ libtailshare_core (7 pares .h/.cpp)
 │   └── plugin/                   # tailshareitemaction.cpp, sendjob.cpp, .json
 ├── tools/
 │   └── tailshare-probe/          # binário de dev, NÃO instalado (ver Fase 2)
-├── tests/
-│   ├── fixtures/                 # JSONs de status (anonimizados)
+├── tests/                        # ✅ 5 binários QTest + CMakeLists
+│   ├── fixtures/                 # ✅ 8 JSONs de status (anonimizados)
 │   └── *test.cpp
 ├── po/                           # pt_BR.po
 ├── data/
@@ -210,25 +237,30 @@ tailshare/
     └── PKGBUILD
 ```
 
-O diretório local ainda se chama `share-via-tailscale`; renomear a pasta e o
-remote é decisão sua — o nome interno dos artefatos já é `tailshare`.
+O caminho das fixtures chega aos testes por `target_compile_definitions`
+(`FIXTURE_DIR`), então `ctest` roda de qualquer diretório.
 
 ---
 
 ## 6. Fases
 
-### Fase 0 — Fundação
-Instalar `extra-cmake-modules` (única dependência de build faltando).
-CMake raiz com ECM, `LICENSE`, `.gitignore`, `README` com pré-requisitos, commit inicial.
-**Pronto quando:** `cmake -B build && cmake --build build` compila um alvo vazio.
+### ✅ Fase 0 — Fundação (concluída, `926c8ff`)
+`extra-cmake-modules` instalado; CMake raiz com ECM, `LICENSE`, `.gitignore`,
+`README` com pré-requisitos.
+**Entregue:** `cmake -B build && cmake --build build` compila.
 
-### Fase 1 — Núcleo + testes
-`Device`, `TailscaleClient`, filtro/ordenação, `TaildropReason` e `SendPlan`, com
-QTest sobre fixtures JSON: tailnet normal, peer offline, peer com
-`NoFileSharingReason`, backend `NeedsLogin`, `Stopped`, JSON malformado, tailnet
-vazia, timeout. Mais os casos de `SendPlan`: só arquivos, uma pasta, várias
-pastas, pasta + arquivos, nomes com espaço e acento.
-**Pronto quando:** `ctest` passa e a suíte cobre esses cenários.
+### ✅ Fase 1 — Núcleo + testes (concluída, `4efe033`)
+Núcleo completo (ver 4.1) e **60 casos QTest em 5 binários** sobre 8 fixtures:
+tailnet normal, peer offline, peer com `NoFileSharingReason`, backend
+`NeedsLogin` e `Stopped`, JSON malformado, tailnet vazia, JSON com campos
+ausentes e valor de enum inexistente. `TailscaleClient` é testado com fixture via
+`/bin/cat`, timeout via `sleep 5` (verifica retorno em <2 s), saída não-zero com
+stderr repassado, e saída que não é JSON. `SendPlan` cobre só arquivos, uma
+pasta, várias pastas, pasta + arquivos, caminho relativo, caminho inexistente,
+seleção vazia, dispositivo sem `DNSName`, e nomes com espaço, acento e traço
+inicial.
+**Entregue:** `ctest` passa 100%; validado também contra a tailnet real por um
+binário de smoke descartável (não versionado).
 
 ### Fase 2 — Envio validado fora da UI
 `SendJob` completo (ZIP em thread, envio, notificações, limpeza) exercitado por
@@ -261,14 +293,16 @@ Dolphin (sem `kbuildsycoca6` — ver 3.3), e a UI aparece em pt-BR com locale pt
 Roteiro fechado: arquivo único, múltiplos arquivos, pasta, pasta grande, nome com
 espaços e acentos, peer offline, peer sem Taildrop, tailnet só com self,
 `tailscale down` no meio do envio, fechar o Dolphin durante o envio, seleção em
-`sftp://`.
+`sftp://`. Inclui conferir a saída real de `status --json` com `tailscale down`
+e sem login, para corrigir as fixtures `stopped.json` e `needs-login.json` (3.4).
 **Pronto quando:** cada caso tem comportamento observado e documentado no README.
 
 ---
 
 ## 7. Dependências
 
-**Build:** `extra-cmake-modules` (**ausente — instalar**), `cmake`, `g++`, Qt 6.11.
+**Build:** `extra-cmake-modules` (instalado), `cmake`, `g++`, Qt 6.11 — mais
+`Qt6::Test` para a suíte (`BUILD_TESTING`, ligado por padrão via ECM).
 **KF6 (já presentes):** KIO 6.28, KCoreAddons, KI18n, KNotifications, KArchive, KWidgetsAddons.
 **Runtime:** `tailscale` ≥ 1.102 no PATH; Plasma 6, Dolphin 26.04.
 
@@ -294,13 +328,19 @@ espaços e acentos, peer offline, peer sem Taildrop, tailnet só com self,
 ## 9. Pontos ainda em aberto
 
 As seis perguntas da versão anterior foram todas respondidas e viraram linhas da
-seção 1. Sobram três detalhes, todos resolvíveis durante a implementação:
+seção 1. Restam dois pontos:
 
 1. **Aviso ao fechar o Dolphin** — viabilidade só se sabe no spike da Fase 3
    (4.3). Plano B já decidido.
-2. **Nome do ZIP único** em seleção mista — proposta em 4.1; ajustável ao ver na prática.
-3. **Renomear o diretório e o remote** de `share-via-tailscale` para `tailshare` —
-   decisão sua, não bloqueia nada.
+2. **Fixtures de `Stopped` e `NeedsLogin`** — escritas com `Peer: null` por
+   suposição, ainda não conferidas contra um `tailscale down` real (ver 3.4).
+
+Resolvidos desde a versão anterior:
+
+- ~~**Nome do ZIP único** em seleção mista~~ — implementado e testado conforme
+  a proposta de 4.1.
+- ~~**Renomear o diretório e o remote**~~ — feito: o diretório é `tailshare` e o
+  remote é `git@github.com:lPitecus/tailshare.git`.
 
 ---
 

@@ -1,3 +1,31 @@
+# tailshare — instruções do projeto
+
+## O `PLAN.md` é o registro vivo do projeto
+
+`PLAN.md` não é um documento de abertura: é a memória de longo prazo do
+trabalho. Quem abrir este repositório daqui a três meses — pessoa ou agente —
+tem que conseguir retomar lendo só ele.
+
+**Ao concluir uma fase, ou sempre que a implementação contrariar, confirmar ou
+acrescentar algo ao que está escrito, atualize o `PLAN.md` no mesmo commit do
+código.** O que registrar:
+
+- **Fase concluída**: marcar como concluída com o hash do commit e o que foi
+  entregue de fato, não o que estava previsto.
+- **Achados de implementação**: tudo que só se descobre escrevendo o código vai
+  para a seção 3, com *como* foi verificado (código lido e linha, comando
+  executado, medição feita nesta máquina). Um fato sem fonte não entra.
+- **Decisões que mudaram**: corrigir a afirmação antiga em vez de acumular
+  contradições; quando a correção for relevante, dizer o que estava errado.
+- **Pendências que deixaram de existir**: riscar da seção 9, não deixar
+  apodrecer.
+- **Verificado vs. suposto**: manter a distinção explícita. Suposição não
+  confirmada nunca vira afirmação — vira item de teste de uma fase, nomeando
+  a fase.
+
+Vale para os artefatos derivados também: se o `README` descreve o que mudou,
+ele acompanha.
+
 <!-- ai-memory:start -->
 ## Long-term memory (ai-memory)
 

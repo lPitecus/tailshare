@@ -4,7 +4,7 @@ Plugin nativo do KDE Plasma que adiciona um submenu **"Share via Tailscale"** ao
 menu de contexto do Dolphin, listando os dispositivos da tailnet aptos a receber
 arquivos e enviando via Taildrop (`tailscale file cp`).
 
-**Estado:** Fases 0 a 3 concluídas. O plugin funciona no Dolphin real: submenu,
+**Estado:** Fases 0 a 3 concluídas (`72cf376`). O plugin funciona no Dolphin real: submenu,
 envio, itens desabilitados, notificações e aviso ao fechar a janela.
 Próximo passo: Fase 4 — i18n (`pt_BR.po`) e empacotamento (`PKGBUILD`).
 
@@ -377,7 +377,7 @@ cancelamento no meio do envio termina em `Canceled` com `terminate()`, e
 verificado: o conteúdo dos arquivos no dispositivo que recebeu — a evidência
 aqui é o `exit 0` do `tailscale file cp`, que significa peer aceitou.
 
-### ✅ Fase 3 — Plugin do menu (concluída)
+### ✅ Fase 3 — Plugin do menu (concluída, `b9227bd` + `72cf376`)
 Entregue: `tailshareitemaction` (metadados, regras de ocultação, ícones por SO,
 itens desabilitados com tooltip, ligação com o `SendJob`) e o `CloseGuard` do
 spike (4.5). **18 casos novos no `plugintest`**, que carrega o `.so` pelo mesmo

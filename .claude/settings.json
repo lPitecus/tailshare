@@ -7,7 +7,6 @@
           {
             "type": "command",
             "command": "cd \"${CLAUDE_PROJECT_DIR:-.}\" && .claude/hooks/require-plan-update.sh",
-            "if": "Bash(git commit*)",
             "timeout": 10,
             "statusMessage": "Conferindo se o PLAN.md acompanha o commit..."
           }

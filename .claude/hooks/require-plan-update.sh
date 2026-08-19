@@ -12,6 +12,14 @@ set -u
 input=$(cat)
 command=$(printf '%s' "$input" | jq -r '.tool_input.command // ""' 2>/dev/null || true)
 
+# Só interessa git commit. Esta checagem fica aqui, e não no "if" do
+# settings.json: aquele filtro casa por prefixo com o comando inteiro, então
+# "git add x && git commit" nunca casaria e o gate passava batido.
+case "$command" in
+    *"git commit"*) ;;
+    *) exit 0 ;;
+esac
+
 # Saída deliberada, quando o autor do commit assumir a decisão.
 case "$command" in
     *--no-verify*) exit 0 ;;

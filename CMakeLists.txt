@@ -57,10 +57,25 @@ if(BUILD_TESTING)
     add_subdirectory(tests)
 endif()
 
+ki18n_install(po)
+
 install(FILES data/tailshare.notifyrc DESTINATION ${KDE_INSTALL_KNOTIFYRCDIR})
 
 # The same file inside the build tree, so the probe can be run against it with
 # XDG_DATA_DIRS=<build>/share:$XDG_DATA_DIRS before anything is installed.
 configure_file(data/tailshare.notifyrc ${CMAKE_BINARY_DIR}/share/knotifications6/tailshare.notifyrc COPYONLY)
+
+# ki18n_install() compiles the catalogues into <build>/locale, which is not
+# where KLocalizedString looks. Mirror them under the same <build>/share the
+# line above uses, so one XDG_DATA_DIRS covers notifications and translations.
+if(TARGET pofiles)
+    add_custom_target(tailshare_locale_in_build_tree ALL
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+                ${CMAKE_BINARY_DIR}/locale ${CMAKE_BINARY_DIR}/share/locale
+        COMMENT "Mirroring message catalogs into share/locale"
+        VERBATIM
+    )
+    add_dependencies(tailshare_locale_in_build_tree pofiles)
+endif()
 
 feature_summary(WHAT ALL INCLUDE_QUIET_PACKAGES FATAL_ON_MISSING_REQUIRED_PACKAGES)

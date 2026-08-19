@@ -173,6 +173,17 @@ menu já não oferecer dispositivo que o Taildrop diz inalcançável.
 | A entrada cai no **nível principal** do menu que o `KFileItemActions` monta | `plugintest reachesTheMenuKioBuilds`, que percorre o caminho do KIO lendo o `kservicemenurc` real desta máquina | Confirma que não declarar `X-KDE-Show-In-Submenu` faz o esperado |
 | O executável do tailscale precisava ser injetável para testar o menu | sem isso o `plugintest` dependeria da tailnet desta máquina | `TailscaleClient::findExecutable()` passou a honrar `$TAILSHARE_TAILSCALE`, o que também serve a instalação fora do PATH |
 
+### 3.7 Achados durante a implementação (Fase 4)
+
+| Fato | Como foi verificado | Consequência |
+|---|---|---|
+| `ki18n_install(po)` compila os catálogos para `<build>/locale`, e **não** para `<build>/share/locale` | `/usr/lib/cmake/KF6I18n/KF6I18nMacros.cmake`, l. 136–167: `COPY_TO=${CMAKE_CURRENT_BINARY_DIR}/${dirname}`, com `dirname` = último componente de `KDE_INSTALL_LOCALEDIR` | O `KLocalizedString` procura em `XDG_DATA_DIRS/locale`, então o build tree ficaria sem tradução. Alvo extra no CMake raiz espelha para `build/share/locale`, e um único `XDG_DATA_DIRS` passa a cobrir notificação **e** tradução |
+| Tradução funciona a partir do build tree, sem instalar nada | `LANGUAGE=pt_BR LANG=pt_BR.UTF-8 XDG_DATA_DIRS="$PWD/build/share:…" ./build/bin/tailshare-probe --list` imprimiu `Este dispositivo está offline.` para os dispositivos offline da tailnet real | O fluxo "experimentar sem instalar" do README também vale para o pt-BR |
+| `KPluginMetaData::name()` lê a chave `Name[pt_BR]` do JSON **pelo locale do processo** | `LANG=pt_BR.UTF-8 ./build/bin/plugintest theBinaryCarriesItsMetadata` passou a **falhar**, com `data.name()` devolvendo `Compartilhar pelo Tailscale` | Confirma o mecanismo (`KJsonUtils::readTranslatedString`, `kjsonutils.h`) e revela que o teste antigo dependia do locale de quem roda: agora ele fixa `QLocale::setDefault(QLocale::c())` e tem um caso irmão que checa as duas línguas. `ctest` dá 100% com `LANG=en_US` e com `LANG=pt_BR` |
+| O `msgcmp` reprova string nova sem tradução | uma `i18n()` temporária foi acrescentada a `taildropreason.cpp` e `tests/check-translations.sh` saiu com código 1: *"this message is used but not defined"* | O `translationstest` é guarda de verdade, não decoração: strings novas não passam despercebidas |
+| O `ctest` já rodava um `appstreamtest` que ninguém escreveu | apareceu em `ctest -N`; vem de `KDECMakeSettings.cmake:177`, que adiciona o teste quando acha o `appstreamcli` | Passa vazio porque o projeto não instala metainfo AppStream. Publicar metainfo continua fora do escopo da v1 |
+| O `.pot` não é versionado | `.gitignore` já ignorava `*.pot` desde a Fase 0 | Segue a convenção do KDE: o template é gerado pelo `Messages.sh`, e o `translationstest` extrai o seu próprio em diretório temporário em vez de confiar num arquivo no repo |
+
 ## 4. Arquitetura
 
 Um artefato instalável (o plugin) sobre uma lib de núcleo testável. O envio roda
@@ -319,14 +330,17 @@ tailshare/
 │   └── plugin/                   # ✅ tailshareitemaction, closeguard, .json
 ├── tools/
 │   └── tailshare-probe/          # ✅ binário de dev, NÃO instalado
-├── tests/                        # ✅ 8 binários QTest + CMakeLists
+├── tests/                        # ✅ 9 binários QTest + CMakeLists
 │   ├── fixtures/                 # ✅ 8 JSONs de status (anonimizados)
+│   ├── check-translations.sh     # ✅ catálogo × código, roda no ctest
 │   └── *test.cpp
-├── po/                           # pt_BR.po
+├── Messages.sh                   # ✅ extração do .pot (o .pot não é versionado)
+├── po/
+│   └── pt_BR/tailshare.po        # ✅ catálogo, instalado por ki18n_install()
 ├── data/
 │   └── tailshare.notifyrc        # ✅ eventos de notificação (instalado)
 └── packaging/
-    └── PKGBUILD
+    └── PKGBUILD                  # ✅ tailshare-git, roda a suíte no check()
 ```
 
 O caminho das fixtures chega aos testes por `target_compile_definitions`
@@ -403,13 +417,27 @@ pode quebrar em outra, e o plano B (aceitar o cancelamento e notificar) segue
 valendo. A prova dos cinco formatos de seleção é a do `plugintest`; o que se
 observou no Dolphin foi o submenu aparecendo em uso normal.
 
-### Fase 4 — i18n e empacotamento
-`pt_BR.po` e extração do catálogo (as strings já nascem em `i18n()`; o
-`.notifyrc` já está instalado desde a Fase 2, falta traduzir os nomes dos
-eventos), `PKGBUILD`, instruções de instalação/desinstalação no README
-(incluindo como desligar o plugin pelo grupo `[Show]` do `kservicemenurc`).
-**Pronto quando:** `makepkg -si` instala, o plugin carrega após reiniciar o
-Dolphin (sem `kbuildsycoca6` — ver 3.3), e a UI aparece em pt-BR com locale pt_BR.
+### Fase 4 — i18n e empacotamento (implementada, falta a prova do pacote)
+Entregue: `Messages.sh` (extração com o conjunto de keywords do KDE, 22
+mensagens), `po/pt_BR/tailshare.po` completo, `ki18n_install(po)` no CMake com o
+espelho para `build/share/locale` (3.7), `Name[pt_BR]`/`Description[pt_BR]` no
+JSON do plugin, `Name[pt_BR]`/`Comment[pt_BR]` no `.notifyrc`,
+`packaging/PKGBUILD` (`tailshare-git`, com `check()` rodando a suíte) e a seção
+*Translations* do README. As instruções de instalação, desinstalação e do grupo
+`[Show]` do `kservicemenurc` já estavam no README desde a Fase 3; ganharam o
+caminho do `makepkg`.
+
+**Dois testes novos**, ambos no `ctest`: `i18ntest` (9 casos) compara as strings
+que o usuário lê — motivos de recusa, título e texto das notificações de um
+`SendJob` real, nas duas formas de plural — contra o catálogo que o build
+acabou de compilar; `translationstest` roda o `Messages.sh` num diretório
+temporário e reprova, via `msgcmp` e `msgfmt --check`, qualquer catálogo de
+`po/` que tenha ficado para trás do código.
+
+**Verificado:** `ctest` 100% (11 testes) com `LANG=en_US` **e** com
+`LANG=pt_BR`; a UI sai em pt-BR a partir do build tree, sem instalar nada
+(3.7).
+**Falta:** rodar o `makepkg -si` de fato — item de fechamento desta fase.
 
 ### Fase 5 — QA manual
 Roteiro fechado: arquivo único, múltiplos arquivos, pasta, pasta grande, nome com

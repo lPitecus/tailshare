@@ -12,6 +12,7 @@
 
 #include <QAction>
 #include <QDir>
+#include <QLocale>
 #include <QElapsedTimer>
 #include <QFile>
 #include <QMenu>
@@ -159,6 +160,10 @@ private:
 private Q_SLOTS:
     void initTestCase()
     {
+        // The plugin's name and description are read out of the JSON by locale,
+        // so the English expectations below need a locale with no translation.
+        QLocale::setDefault(QLocale::c());
+
         QVERIFY(m_dir.isValid());
         makeFile(QStringLiteral("notes.txt"), QByteArrayLiteral("plain text\n"));
         makeFile(QStringLiteral("readme.txt"), QByteArrayLiteral("more text\n"));
@@ -183,6 +188,23 @@ private Q_SLOTS:
         QCOMPARE(data.mimeTypes(), QStringList({QStringLiteral("application/octet-stream"), QStringLiteral("inode/directory")}));
         // The item belongs in the main menu, not under "Actions".
         QVERIFY(!data.rawData().contains(QLatin1String("X-KDE-Show-In-Submenu")));
+    }
+
+    /**
+     * The name Dolphin shows in Settings -> Context Menu comes from the JSON,
+     * not from the message catalog: KPluginMetaData picks the "[pt_BR]" key
+     * itself, by locale.
+     */
+    void carriesItsNameInEveryLanguageItHas()
+    {
+        QLocale::setDefault(QLocale(QStringLiteral("pt_BR")));
+        const KPluginMetaData translated = metaData();
+
+        QCOMPARE(translated.name(), QStringLiteral("Compartilhar pelo Tailscale"));
+        QCOMPARE(translated.description(), QStringLiteral("Envie os arquivos selecionados para um dispositivo da sua tailnet"));
+
+        QLocale::setDefault(QLocale::c());
+        QCOMPARE(metaData().name(), QStringLiteral("Share via Tailscale"));
     }
 
     void kioMatchesEverySelectionShape_data()

@@ -34,6 +34,22 @@ foreach(test ${TAILSHARE_SEND_TESTS})
     ecm_mark_as_test(${test})
 endforeach()
 
+# Nothing to link, just gettext: keeps the catalog honest as strings change.
+find_program(GETTEXT_MSGCMP_EXECUTABLE msgcmp)
+find_program(GETTEXT_XGETTEXT_EXECUTABLE xgettext)
+if(GETTEXT_MSGCMP_EXECUTABLE AND GETTEXT_XGETTEXT_EXECUTABLE)
+    add_test(NAME translationstest
+             COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/check-translations.sh ${CMAKE_SOURCE_DIR})
+endif()
+
+# The pt-BR catalog, against the catalog this build compiled into <build>/locale.
+add_executable(i18ntest i18ntest.cpp)
+target_link_libraries(i18ntest PRIVATE tailshare_send Qt6::Test KF6::I18n)
+target_compile_definitions(i18ntest PRIVATE BUILD_LOCALE_DIR="${CMAKE_BINARY_DIR}/locale")
+add_dependencies(i18ntest pofiles)
+add_test(NAME i18ntest COMMAND i18ntest)
+ecm_mark_as_test(i18ntest)
+
 # Drives the built plugin binary through KIO's own loading path, so it needs
 # the .so itself rather than a library to link against.
 if(TARGET tailshareitemaction)

@@ -6,12 +6,14 @@
             }
         ],
         "Description": "Send the selected files to a device on your tailnet",
+        "Description[pt_BR]": "Envie os arquivos selecionados para um dispositivo da sua tailnet",
         "Icon": "document-send",
         "License": "GPL-2.0-or-later",
         "MimeTypes": [
             "application/octet-stream",
             "inode/directory"
         ],
-        "Name": "Share via Tailscale"
+        "Name": "Share via Tailscale",
+        "Name[pt_BR]": "Compartilhar pelo Tailscale"
     }
 }

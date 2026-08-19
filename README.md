@@ -5,9 +5,9 @@ context menu, listing the tailnet devices that can receive files and sending
 them over [Taildrop](https://tailscale.com/kb/1106/taildrop).
 
 > **Status: early development, but it works.** The submenu, the transfer and
-> the notifications have been exercised in a real Dolphin session. What is
-> missing is packaging and translation, so for now you build it yourself. See
-> [PLAN.md](PLAN.md) for what is verified and what is not.
+> the notifications have been exercised in a real Dolphin session, the
+> interface is available in English and Brazilian Portuguese, and there is an
+> Arch package. See [PLAN.md](PLAN.md) for what is verified and what is not.
 
 ## How it will work
 
@@ -39,12 +39,13 @@ packed into a single ZIP before sending.
 - CMake 3.20+, a C++20 compiler
 - Qt 6.6+
 - KDE Frameworks 6: Extra CMake Modules, CoreAddons, KIO, I18n, Notifications, Archive
+- gettext, to compile the message catalogs
 
 On Arch / CachyOS:
 
 ```sh
-sudo pacman -S --needed base-devel cmake extra-cmake-modules qt6-base \
-    kcoreaddons kio ki18n knotifications karchive
+sudo pacman -S --needed base-devel cmake extra-cmake-modules gettext qt6-base \
+    kcoreaddons kio ki18n knotifications karchive kwidgetsaddons
 ```
 
 ## Building
@@ -56,6 +57,21 @@ ctest --test-dir build --output-on-failure
 ```
 
 ## Installing
+
+### Arch / CachyOS
+
+The `PKGBUILD` in [packaging/](packaging) builds the current `main` branch, so
+it clones the repository itself and nothing else is needed in the directory:
+
+```sh
+cd packaging
+makepkg -si
+```
+
+The package is named `tailshare-git` and runs the test suite as part of the
+build. Remove it with `sudo pacman -R tailshare-git`.
+
+### Anywhere else
 
 ```sh
 sudo cmake --install build
@@ -71,6 +87,8 @@ KDE Frameworks 6 discovers context-menu plugins by scanning the plugin
 directory, so there is no `kbuildsycoca6` step.
 
 ### Uninstalling
+
+Installed by hand, `cmake --install` leaves a manifest of everything it wrote:
 
 ```sh
 sudo xargs rm -v < build/install_manifest.txt
@@ -104,13 +122,46 @@ that points nowhere makes Dolphin start with no plugin and say nothing about
 it. And kill any running Dolphin first, or the new command is handed to the old
 process, which never saw these variables.
 
-`XDG_DATA_DIRS` is what lets the notifications find their event definitions
-before `tailshare.notifyrc` is installed; keep the system directories in it or
-Dolphin loses its icons and MIME database.
+`XDG_DATA_DIRS` is what lets the notifications find their event definitions and
+the interface find its translations before either is installed; keep the system
+directories in it or Dolphin loses its icons and MIME database.
 
 `$TAILSHARE_TAILSCALE` overrides the `tailscale` executable, for an
 installation that keeps it outside `PATH` — and for testing the plugin against
 scripted output.
+
+## Translations
+
+The interface is written in English and translated into Brazilian Portuguese;
+the catalogs live in [po/](po) and are compiled and installed by the build.
+Plasma follows your language settings, so nothing has to be configured — to see
+the other language without changing them, set it for one command:
+
+```sh
+LANGUAGE=pt_BR XDG_DATA_DIRS="$PWD/build/share:$XDG_DATA_DIRS" \
+    ./build/bin/tailshare-probe --list
+```
+
+Adding a language means adding `po/<code>/tailshare.po`; nothing else changes,
+`ki18n_install()` picks up whatever is in `po/`. To refresh the template after
+touching a string in `src/`, run `./Messages.sh` — it writes `po/tailshare.pot`,
+which `msgmerge` then folds into each catalog:
+
+```sh
+./Messages.sh
+msgmerge --update po/pt_BR/tailshare.po po/tailshare.pot
+```
+
+The `translationstest` in the suite does the extraction itself and checks every
+catalog under `po/`, so a string added to `src/` and left untranslated shows up
+as a failing test rather than as English text in a Portuguese menu.
+
+Some text does not come from the catalogs at all, because it is read before any
+translation is loaded: the plugin's name and description, shown in *Configure
+Dolphin → Context Menu* and kept in `src/plugin/tailshareitemaction.json`, and
+the notification event names, shown in *System Settings → Notifications* and
+kept in `data/tailshare.notifyrc`. Both use the KDE convention of a `[pt_BR]`
+suffix on the key, and both need the same treatment when a language is added.
 
 ## Development probe
 

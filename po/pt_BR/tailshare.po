@@ -1,0 +1,155 @@
+# Tradução para português do Brasil do tailshare.
+# SPDX-FileCopyrightText: 2026 Arthur Silva
+# SPDX-License-Identifier: GPL-2.0-or-later
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: tailshare\n"
+"Report-Msgid-Bugs-To: https://github.com/lPitecus/tailshare/issues\n"
+"POT-Creation-Date: 2026-08-19 15:09-0300\n"
+"PO-Revision-Date: 2026-08-19 15:30-0300\n"
+"Last-Translator: Arthur Silva\n"
+"Language-Team: Português do Brasil\n"
+"Language: pt_BR\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+
+#: src/core/taildropreason.cpp:18
+#, kde-format
+msgid "This device is offline."
+msgstr "Este dispositivo está offline."
+
+#: src/core/taildropreason.cpp:20
+#, kde-format
+msgid "Taildrop is not enabled for this device."
+msgstr "O Taildrop não está habilitado neste dispositivo."
+
+#: src/core/taildropreason.cpp:22
+#, kde-format
+msgid "This device runs an operating system that cannot receive files."
+msgstr ""
+"Este dispositivo usa um sistema operacional que não pode receber arquivos."
+
+#: src/core/taildropreason.cpp:24
+#, kde-format
+msgid ""
+"This device belongs to another user. Taildrop only works between your own "
+"devices."
+msgstr ""
+"Este dispositivo pertence a outro usuário. O Taildrop só funciona entre "
+"dispositivos seus."
+
+#: src/core/taildropreason.cpp:26
+#, kde-format
+msgid "Tailscale is not running."
+msgstr "O Tailscale não está em execução."
+
+#: src/core/taildropreason.cpp:30
+#, kde-format
+msgid "Tailscale has no connection details for this device yet."
+msgstr "O Tailscale ainda não tem os dados de conexão deste dispositivo."
+
+#: src/core/taildropreason.cpp:35
+#, kde-format
+msgid "This device cannot receive files right now."
+msgstr "Este dispositivo não pode receber arquivos no momento."
+
+#: src/notify/sendnotifier.cpp:94
+#, kde-format
+msgctxt "@action:button notification"
+msgid "Cancel"
+msgstr "Cancelar"
+
+#: src/plugin/closeguard.cpp:97
+#, kde-format
+msgctxt "@info"
+msgid "A file is still being sent via Tailscale."
+msgid_plural "%1 files are still being sent via Tailscale."
+msgstr[0] "Um arquivo ainda está sendo enviado pelo Tailscale."
+msgstr[1] "%1 arquivos ainda estão sendo enviados pelo Tailscale."
+
+#: src/plugin/closeguard.cpp:98
+#, kde-format
+msgctxt "@title:window"
+msgid "Transfer in Progress"
+msgstr "Transferência em andamento"
+
+#: src/plugin/tailshareitemaction.cpp:99
+#, kde-format
+msgctxt "@action:inmenu"
+msgid "Share via Tailscale"
+msgstr "Compartilhar pelo Tailscale"
+
+#: src/send/sendmessages.cpp:16
+#, kde-format
+msgctxt "@title notification"
+msgid "Compressing"
+msgstr "Compactando"
+
+#: src/send/sendmessages.cpp:18
+#, kde-format
+msgctxt "@title notification"
+msgid "Sending files"
+msgstr "Enviando arquivos"
+
+#: src/send/sendmessages.cpp:20
+#, kde-format
+msgctxt "@title notification"
+msgid "Files sent"
+msgstr "Arquivos enviados"
+
+#: src/send/sendmessages.cpp:22
+#, kde-format
+msgctxt "@title notification"
+msgid "Send failed"
+msgstr "Falha no envio"
+
+#: src/send/sendmessages.cpp:24
+#, kde-format
+msgctxt "@title notification"
+msgid "Send canceled"
+msgstr "Envio cancelado"
+
+#: src/send/sendmessages.cpp:41
+#, kde-format
+msgctxt "@info notification, %2 is a device name"
+msgid "Packing %1 item into %3 for %2"
+msgid_plural "Packing %1 items into %3 for %2"
+msgstr[0] "Compactando %1 item em %3 para %2"
+msgstr[1] "Compactando %1 itens em %3 para %2"
+
+#: src/send/sendmessages.cpp:48
+#, kde-format
+msgctxt "@info notification, %1 is a file name, %2 a device name"
+msgid "Sending %1 to %2"
+msgstr "Enviando %1 para %2"
+
+#: src/send/sendmessages.cpp:50
+#, kde-format
+msgctxt "@info notification, %2 is a device name"
+msgid "Sending %1 file to %2"
+msgid_plural "Sending %1 files to %2"
+msgstr[0] "Enviando %1 arquivo para %2"
+msgstr[1] "Enviando %1 arquivos para %2"
+
+#: src/send/sendmessages.cpp:53
+#, kde-format
+msgctxt "@info notification, %1 is a file name, %2 a device name"
+msgid "Sent %1 to %2"
+msgstr "%1 enviado para %2"
+
+#: src/send/sendmessages.cpp:55
+#, kde-format
+msgctxt "@info notification, %2 is a device name"
+msgid "Sent %1 file to %2"
+msgid_plural "Sent %1 files to %2"
+msgstr[0] "%1 arquivo enviado para %2"
+msgstr[1] "%1 arquivos enviados para %2"
+
+#: src/send/sendmessages.cpp:60
+#, kde-format
+msgctxt "@info notification, %1 is a device name"
+msgid "The transfer to %1 was canceled."
+msgstr "A transferência para %1 foi cancelada."

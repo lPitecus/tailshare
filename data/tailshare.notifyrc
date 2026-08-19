@@ -8,19 +8,27 @@
 [Global]
 IconName=document-send
 Name=Share via Tailscale
+Name[pt_BR]=Compartilhar pelo Tailscale
 Comment=Sending files to tailnet devices over Taildrop
+Comment[pt_BR]=Envio de arquivos para dispositivos da tailnet pelo Taildrop
 
 [Event/sending]
 Name=Sending files
+Name[pt_BR]=Enviando arquivos
 Comment=A transfer is being prepared or is in progress
+Comment[pt_BR]=Uma transferência está sendo preparada ou está em andamento
 Action=Popup
 
 [Event/sent]
 Name=Files sent
+Name[pt_BR]=Arquivos enviados
 Comment=A transfer finished successfully
+Comment[pt_BR]=Uma transferência terminou com sucesso
 Action=Popup
 
 [Event/error]
 Name=Send failed
+Name[pt_BR]=Falha no envio
 Comment=A transfer failed or was canceled
+Comment[pt_BR]=Uma transferência falhou ou foi cancelada
 Action=Popup

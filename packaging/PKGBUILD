@@ -1,0 +1,61 @@
+# Maintainer: Arthur Silva <arthur.silva@serutil.com>
+#
+# Builds the current main branch. There is no release tag yet, so the version
+# is the one in CMakeLists.txt plus the commit this package was built from.
+
+pkgname=tailshare-git
+_name=tailshare
+pkgver=0.1.0.r0.0000000
+pkgrel=1
+pkgdesc="Dolphin context menu for sending files to tailnet devices over Taildrop"
+arch=('x86_64' 'aarch64')
+url="https://github.com/lPitecus/tailshare"
+license=('GPL-2.0-or-later')
+depends=(
+    'kcoreaddons'
+    'kio'
+    'ki18n'
+    'knotifications'
+    'karchive'
+    'kwidgetsaddons'
+    'qt6-base'
+    'tailscale'
+)
+makedepends=(
+    'cmake'
+    'extra-cmake-modules'
+    'gettext'
+    'git'
+)
+optdepends=('dolphin: the file manager the context menu plugs into')
+provides=("$_name=$pkgver")
+conflicts=("$_name")
+source=("$_name::git+$url.git")
+sha256sums=('SKIP')
+
+pkgver() {
+    cd "$srcdir/$_name"
+    # The project version is declared once, in CMakeLists.txt; keep reading it
+    # from there so a bump never has to be repeated here.
+    local version
+    version=$(sed -n 's/^project(tailshare VERSION \([0-9.]*\).*/\1/p' CMakeLists.txt)
+    printf '%s.r%s.%s' "$version" "$(git rev-list --count HEAD)" "$(git rev-parse --short=7 HEAD)"
+}
+
+build() {
+    cmake -B build -S "$_name" \
+        -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+        -DCMAKE_INSTALL_PREFIX=/usr \
+        -DBUILD_TOOLS=OFF \
+        -Wno-dev
+    cmake --build build
+}
+
+check() {
+    ctest --test-dir build --output-on-failure
+}
+
+package() {
+    DESTDIR="$pkgdir" cmake --install build
+    install -Dm644 "$_name/LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

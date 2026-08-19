@@ -1,0 +1,12 @@
+# ai-memory: fixa o escopo deste checkout e injeta um brief curto no início
+# de cada sessão. O fluxo do projeto é "sessão nova a cada retomada"
+# (`ai-memory run --fresh claude`), então o brief é o que substitui o replay
+# do transcript antigo.
+workspace = "default"
+project = "tailshare"
+
+[briefing]
+# Também re-injeta depois de um /clear — o Claude Code redispara SessionStart.
+inject_on_session_start = "true"
+# Orçamento em caracteres (~4 chars/token). O servidor limita entre 500 e 20000.
+max_chars = 4000

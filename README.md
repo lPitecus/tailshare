@@ -4,9 +4,9 @@ A KDE Plasma plugin that adds a **Share via Tailscale** submenu to Dolphin's
 context menu, listing the tailnet devices that can receive files and sending
 them over [Taildrop](https://tailscale.com/kb/1106/taildrop).
 
-> **Status: early development.** The context-menu plugin and the whole send
-> path are written and covered by tests, but the plugin has not yet been
-> exercised in a real Dolphin session — expect rough edges. See
+> **Status: early development, but it works.** The submenu, the transfer and
+> the notifications have been exercised in a real Dolphin session. What is
+> missing is packaging and translation, so for now you build it yourself. See
 > [PLAN.md](PLAN.md) for what is verified and what is not.
 
 ## How it will work
@@ -94,12 +94,19 @@ straight from it:
 
 ```sh
 killall dolphin
-QT_PLUGIN_PATH="$PWD/build/plugins" \
-XDG_DATA_DIRS="$PWD/build/share:$XDG_DATA_DIRS" dolphin ~
+env QT_PLUGIN_PATH=/absolute/path/to/tailshare/build/plugins \
+    XDG_DATA_DIRS=/absolute/path/to/tailshare/build/share:/usr/local/share:/usr/share \
+    dolphin ~
 ```
 
+Two things this gets wrong easily. Use **absolute** paths: a `QT_PLUGIN_PATH`
+that points nowhere makes Dolphin start with no plugin and say nothing about
+it. And kill any running Dolphin first, or the new command is handed to the old
+process, which never saw these variables.
+
 `XDG_DATA_DIRS` is what lets the notifications find their event definitions
-before `tailshare.notifyrc` is installed.
+before `tailshare.notifyrc` is installed; keep the system directories in it or
+Dolphin loses its icons and MIME database.
 
 `$TAILSHARE_TAILSCALE` overrides the `tailscale` executable, for an
 installation that keeps it outside `PATH` — and for testing the plugin against

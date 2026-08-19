@@ -5,6 +5,7 @@
 
 #include <KAbstractFileItemActionPlugin>
 #include <KFileItem>
+#include <KFileItemActions>
 #include <KFileItemListProperties>
 #include <KPluginFactory>
 #include <KPluginMetaData>
@@ -106,6 +107,38 @@ private:
             }
         }
         return false;
+    }
+
+    /** Where @p title sits in the menu tree, empty when it is not there. */
+    static QString findEntry(const QMenu *menu, const QString &title, const QString &prefix)
+    {
+        for (const QAction *action : menu->actions()) {
+            const QString here = prefix.isEmpty() ? action->text() : prefix + QStringLiteral(" > ") + action->text();
+            if (action->text() == title) {
+                return here;
+            }
+            if (action->menu()) {
+                const QString found = findEntry(action->menu(), title, here);
+                if (!found.isEmpty()) {
+                    return found;
+                }
+            }
+        }
+        return QString();
+    }
+
+    /** The whole menu tree as one line, for a failure message worth reading. */
+    static QString describe(const QMenu *menu, const QString &prefix)
+    {
+        QStringList entries;
+        for (const QAction *action : menu->actions()) {
+            if (action->isSeparator()) {
+                continue;
+            }
+            const QString here = prefix.isEmpty() ? action->text() : prefix + QStringLiteral(" > ") + action->text();
+            entries.append(action->menu() ? describe(action->menu(), here) : here);
+        }
+        return entries.join(QStringLiteral(", "));
     }
 
     /** The device names of a built submenu, in order, with their enabled state. */
@@ -236,6 +269,25 @@ private Q_SLOTS:
         QVERIFY(actions.isEmpty());
         // Whatever tailscale does, the context menu cannot wait for it.
         QVERIFY2(clock.elapsed() < 1000, qPrintable(QString::number(clock.elapsed())));
+    }
+
+    /**
+     * The whole KIO path, not just our half of it: this is what Dolphin runs
+     * when it builds a context menu, so it also shows *where* the entry lands.
+     */
+    void reachesTheMenuKioBuilds()
+    {
+        qputenv("TAILSHARE_TAILSCALE", fakeTailscale(QStringLiteral("ts-ok.sh"), QStringLiteral("cat '%1'").arg(fixture(QStringLiteral("running-tailnet.json")))).toUtf8());
+
+        KFileItemActions kioActions;
+        kioActions.setItemListProperties(propertiesFor({path(QStringLiteral("notes.txt"))}));
+
+        QMenu menu;
+        kioActions.addActionsTo(&menu);
+
+        const QString trail = findEntry(&menu, QStringLiteral("Share via Tailscale"), QString());
+        QVERIFY2(!trail.isEmpty(), qPrintable(QStringLiteral("menu was: ") + describe(&menu, QString())));
+        qWarning("the entry landed at: %s", qPrintable(trail));
     }
 
     void staysAwayFromRemoteSelections()

@@ -46,6 +46,6 @@ if(TARGET tailshareitemaction)
     add_dependencies(plugintest tailshareitemaction)
     add_test(NAME plugintest COMMAND plugintest)
     # No display in a test run; the plugin only ever needs a parent widget.
-    set_tests_properties(plugintest PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+    set_tests_properties(plugintest PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_PLUGIN_PATH=${CMAKE_BINARY_DIR}/plugins")
     ecm_mark_as_test(plugintest)
 endif()

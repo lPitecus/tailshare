@@ -471,7 +471,7 @@ o `makepkg -si` foi rodado pelo usuário; o resto foi observado nesta sessão):
 
 Nenhum passo dependeu de `kbuildsycoca6`, como 3.3 previa.
 
-### ✅ Fase 5 — QA manual (concluída, `1ee48e1` … `f6773af`)
+### ✅ Fase 5 — QA manual (concluída, `1ee48e1` … `da4e024`)
 Os onze casos do roteiro foram percorridos no Dolphin com o pacote instalado, e
 estão na tabela *What has been checked by hand* do README: arquivo único, vários
 arquivos, nome com espaço e acento, pasta, pasta de 400 MB (a janela continua

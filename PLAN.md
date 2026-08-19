@@ -561,7 +561,7 @@ sabendo que `tcl-smart-tv` está na fixture `peer-offline.json` e que
 **Pronto:** as ferramentas rodam limpas, e o que sobrou de aviso tem linha em
 3.9 e 3.10 dizendo por que fica.
 
-### Fase 7 — Publicação (em andamento)
+### ✅ Fase 7 — Publicação (concluída, `1907d1d` + `6284b68`)
 O repositório passou a ser **público** em 19/08/2026, por `gh repo edit
 --visibility public`, depois de uma última passada do `gitleaks` (sem
 achados) e da confirmação de que o e-mail antigo não está mais na árvore. O
@@ -587,9 +587,15 @@ entre um e outro deixava o cache do CMake apontando para a fonte do outro
 O AUR ficou fora de escopo por ora — o repositório público com os dois
 `PKGBUILD` já permite que qualquer um construa.
 
-**Falta:** decidir se vale criar a página de *release* no GitHub. Ela não é
-necessária: o tarball que o `PKGBUILD` usa vem de `archive/refs/tags/`, que a
-tag sozinha já serve.
+A página de *release* foi criada com `gh release create v0.1.0
+--notes-from-tag --verify-tag`, usando o texto da tag anotada como notas:
+<https://github.com/lPitecus/tailshare/releases/tag/v0.1.0>. Ela não era
+necessária — o tarball que o `PKGBUILD` usa vem de `archive/refs/tags/`, que a
+tag sozinha serve —, e foi conferido depois que criá-la **não** muda o tarball:
+o `sha256` baixado de novo é o mesmo que está no `PKGBUILD`.
+
+**Pronto:** o projeto está público, com versão marcada, pacote de release
+verificável e pacote de desenvolvimento para quem quiser acompanhar o `main`.
 
 ---
 

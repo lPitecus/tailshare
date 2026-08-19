@@ -29,7 +29,10 @@ public:
 
     TailscaleClient();
 
-    /** Absolute path of the tailscale executable, empty when it is not installed. */
+    /**
+     * Absolute path of the tailscale executable, empty when it is not installed.
+     * @c $TAILSHARE_TAILSCALE overrides the PATH lookup when it is set.
+     */
     static QString findExecutable();
 
     QString program() const;

@@ -18,6 +18,14 @@ TailscaleClient::TailscaleClient()
 
 QString TailscaleClient::findExecutable()
 {
+    // An explicit path wins over the PATH lookup. It is what lets the tests
+    // drive the plugin with a scripted tailnet, and it is the escape hatch for
+    // an installation that keeps the binary somewhere unusual.
+    const QString override = qEnvironmentVariable("TAILSHARE_TAILSCALE");
+    if (!override.isEmpty()) {
+        return override;
+    }
+
     return QStandardPaths::findExecutable(QStringLiteral("tailscale"));
 }
 

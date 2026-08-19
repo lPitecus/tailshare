@@ -4,11 +4,10 @@ A KDE Plasma plugin that adds a **Share via Tailscale** submenu to Dolphin's
 context menu, listing the tailnet devices that can receive files and sending
 them over [Taildrop](https://tailscale.com/kb/1106/taildrop).
 
-> **Status: early development.** There is no Dolphin menu yet. What works is
-> the whole send path — reading the tailnet, planning the transfer, zipping
-> folders, running Taildrop and reporting through Plasma notifications — which
-> you can drive from the command line with the development probe described
-> below. See [PLAN.md](PLAN.md) for the phase list.
+> **Status: early development.** The context-menu plugin and the whole send
+> path are written and covered by tests, but the plugin has not yet been
+> exercised in a real Dolphin session — expect rough edges. See
+> [PLAN.md](PLAN.md) for what is verified and what is not.
 
 ## How it will work
 
@@ -87,6 +86,24 @@ under *Settings → Configure Dolphin → Context Menu*, or edit
 [Show]
 tailshareitemaction=false
 ```
+
+## Trying it without installing
+
+The build tree mirrors the installed layout, so Dolphin can load the plugin
+straight from it:
+
+```sh
+killall dolphin
+QT_PLUGIN_PATH="$PWD/build/plugins" \
+XDG_DATA_DIRS="$PWD/build/share:$XDG_DATA_DIRS" dolphin ~
+```
+
+`XDG_DATA_DIRS` is what lets the notifications find their event definitions
+before `tailshare.notifyrc` is installed.
+
+`$TAILSHARE_TAILSCALE` overrides the `tailscale` executable, for an
+installation that keeps it outside `PATH` — and for testing the plugin against
+scripted output.
 
 ## Development probe
 

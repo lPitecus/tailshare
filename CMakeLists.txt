@@ -21,13 +21,15 @@ find_package(Qt6 ${QT_MIN_VERSION} REQUIRED COMPONENTS
     Core
     Concurrent  # compressing off the main thread
     Gui         # pulled in by KF6::Notifications
+    Widgets     # the plugin builds a QMenu
 )
 find_package(KF6 ${KF_MIN_VERSION} REQUIRED COMPONENTS
-    CoreAddons   # KPluginFactory
-    KIO          # KAbstractFileItemActionPlugin
-    I18n         # i18n()
+    CoreAddons     # KPluginFactory
+    KIO            # KAbstractFileItemActionPlugin
+    I18n           # i18n()
     Notifications
-    Archive      # KZip
+    Archive        # KZip
+    WidgetsAddons  # KMessageBox, for the close warning
 )
 
 # Tests are opt-out; ECM's KDECMakeSettings already handles BUILD_TESTING.
@@ -45,6 +47,7 @@ option(BUILD_TOOLS "Build the development probe (never installed)" ON)
 add_subdirectory(src/core)
 add_subdirectory(src/send)
 add_subdirectory(src/notify)
+add_subdirectory(src/plugin)
 
 if(BUILD_TOOLS)
     add_subdirectory(tools/tailshare-probe)

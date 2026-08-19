@@ -94,7 +94,8 @@ Quatro afirmações da primeira versão estavam erradas ou imprecisas:
    imposição da ferramenta. O `status --json` marca esses peers como
    `TaildropTarget: Offline`, então o critério de desabilitar é o enum, não um
    erro de envio.
-2. **"`MimeTypes` cobrindo tudo com `all/all`"** — não funciona. Testei
+2. **"`MimeTypes` cobrindo tudo com `all/all`"** — não funciona (e a chave
+   ainda fica no lugar errado neste texto: ver 3.6). Testei
    `QMimeType::inherits()` com Qt 6.11 nesta máquina: `all/all` e `all/allfiles`
    retornam **falso** para todos os tipos (esses coringas só valem para
    servicemenus `.desktop`, em outro trecho do KIO). O valor correto é
@@ -159,6 +160,17 @@ segundo é o pior lado do trade. A saída é o `cancel()` — exposto como açã
 *Cancel* na notificação persistente e como Ctrl+C no probe — mais o fato de o
 menu já não oferecer dispositivo que o Taildrop diz inalcançável.
 
+### 3.6 Achados durante a implementação (Fase 3)
+
+| Fato | Como foi verificado | Consequência |
+|---|---|---|
+| **`MimeTypes` vai dentro do objeto `KPlugin`, não na raiz do JSON** | com a chave na raiz, `KPluginMetaData::mimeTypes()` devolve **lista vazia** e os cinco casos de casamento falham; movida para dentro de `KPlugin`, os cinco passam (`plugintest`) | ⚠️ Corrige 3.2: o exemplo do KDE Connect foi lido como se a chave fosse de raiz. Sem isso o submenu nunca apareceria, e o erro é silencioso |
+| `actions()` custa **17 ms** no pior de 5 execuções, com o tailscale real | `plugintest measuresWhatTheContextMenuPays` com `TAILSHARE_REAL_TAILSCALE=/usr/bin/tailscale` | O orçamento de 300 ms tem folga de mais de 15×; risco da seção 8 controlado |
+| Seleção **arquivo + pasta** casa | `plugintest kioMatchesEverySelectionShape(file and folder)`: `mimeType()` vem vazio, `isFile()` é falso, e `QMimeDatabase::mimeTypeForName("")` ainda assim herda de `application/octet-stream` | Resolve a dúvida de 3.3. Ressalva: o teste **replica** a regra do KIO lida no fonte, não executa o Dolphin — a confirmação final é o QA manual |
+| `QMenu` não mostra tooltip de item nenhum sem `setToolTipsVisible(true)` | API do Qt; sem a chamada, o motivo do item desabilitado não teria como aparecer | Chamada explícita no plugin, com comentário |
+| `KPluginFactory` instancia pelo construtor `(QObject *, const QVariantList &)` | `plugintest` carrega o `.so` pelo mesmo caminho do KIO e obtém a instância | Assinatura fixada; o exemplo do header (`.desktop`, KF5) continua desatualizado |
+| O executável do tailscale precisava ser injetável para testar o menu | sem isso o `plugintest` dependeria da tailnet desta máquina | `TailscaleClient::findExecutable()` passou a honrar `$TAILSHARE_TAILSCALE`, o que também serve a instalação fora do PATH |
+
 ## 4. Arquitetura
 
 Um artefato instalável (o plugin) sobre uma lib de núcleo testável. O envio roda
@@ -207,7 +219,7 @@ Nome do ZIP único (implementado como planejado): uma pasta sozinha →
 `<nome-da-pasta>.zip`; seleção com vários itens → `<nome-da-pasta-pai>.zip`,
 caindo para `tailshare-<AAAAMMDD-HHMMSS>.zip` quando o pai não der um nome útil.
 
-### 4.2 `tailshareitemaction.so` (o plugin)
+### 4.2 `tailshareitemaction.so` (o plugin) — ✅ implementado
 
 Fluxo de `actions()` — tudo síncrono e barato:
 
@@ -221,10 +233,27 @@ Fluxo de `actions()` — tudo síncrono e barato:
    `setEnabled(false)` com o motivo traduzido no tooltip, derivado do enum
    (não do texto cru de `NoFileSharingReason`).
 
-Metadados JSON (`MimeTypes`): `["application/octet-stream", "inode/directory"]` —
-os dois são obrigatórios (ver 3.3). Sem `X-KDE-Show-In-Submenu`, para o item
-ficar no nível principal do menu. Como o KIO reusa a instância do plugin,
-`actions()` não guarda estado entre chamadas.
+Metadados JSON: `MimeTypes` com `["application/octet-stream", "inode/directory"]`
+— os dois são obrigatórios (3.3) e a chave fica **dentro do objeto `KPlugin`**
+(3.6). Sem `X-KDE-Show-In-Submenu`, para o item ficar no nível principal do
+menu. Como o KIO reusa a instância do plugin, `actions()` não guarda estado
+entre chamadas: cada menu sai de um `status` novo.
+
+O `SendJob` disparado pelo clique é filho do `qApp`, não do plugin nem do menu:
+os dois morrem segundos depois do clique e a transferência precisa sobreviver a
+eles. O job se autodestrói no `finished()`.
+
+### 4.5 `CloseGuard` — o aviso ao fechar a janela
+
+Enquanto houver transferência viva, um filtro de eventos na janela de topo
+intercepta `QEvent::Close` e pergunta *"A file is still being sent via
+Tailscale"* com Continue/Cancel. Um guard por janela, morto junto com ela.
+
+Isto **não é API suportada** — um plugin de menu de contexto não tem caminho
+oficial para vetar o fechamento do host — então está isolado numa classe só e
+falha aberto: se o evento não chegar, o fechamento acontece como sempre e quem
+se perde é a transferência, não a janela. A solução de verdade é o helper
+desanexado da v2.
 
 ### 4.3 `SendJob` — o envio, dentro do Dolphin — ✅ implementado
 
@@ -285,10 +314,10 @@ tailshare/
 │   ├── core/                     # ✅ libtailshare_core (7 pares .h/.cpp)
 │   ├── send/                     # ✅ libtailshare_send: archiver, sendjob, sendmessages
 │   ├── notify/                   # ✅ libtailshare_notify: sendnotifier
-│   └── plugin/                   # tailshareitemaction.cpp, .json  (Fase 3)
+│   └── plugin/                   # ✅ tailshareitemaction, closeguard, .json
 ├── tools/
 │   └── tailshare-probe/          # ✅ binário de dev, NÃO instalado
-├── tests/                        # ✅ 7 binários QTest + CMakeLists
+├── tests/                        # ✅ 8 binários QTest + CMakeLists
 │   ├── fixtures/                 # ✅ 8 JSONs de status (anonimizados)
 │   └── *test.cpp
 ├── po/                           # pt_BR.po
@@ -346,17 +375,24 @@ cancelamento no meio do envio termina em `Canceled` com `terminate()`, e
 verificado: o conteúdo dos arquivos no dispositivo que recebeu — a evidência
 aqui é o `exit 0` do `tailscale file cp`, que significa peer aceitou.
 
-### Fase 3 — Plugin do menu
-Plugin, metadados JSON (`application/octet-stream` + `inode/directory`), regras de
-ocultação, ícones por SO, itens desabilitados com tooltip, ligação com o `SendJob`.
-Inclui o **spike do aviso de fechamento** (4.3): event filter na janela pai; se
-não for confiável, cai para a notificação de cancelamento.
-Verificar no Dolphin real os cinco casos de casamento de MIME: arquivo único,
-vários arquivos do mesmo tipo, vários de tipos diferentes, só pastas, e
-**arquivo + pasta** (o caso não confirmado da seção 3.3).
-**Pronto quando:** o submenu aparece nos cinco casos, o envio funciona ponta a
-ponta, o menu não trava com Tailscale parado (`tailscale down`), e o
-comportamento ao fechar o Dolphin está definido e documentado.
+### 🔨 Fase 3 — Plugin do menu (código pronto, QA manual pendente)
+Entregue: `tailshareitemaction` (metadados, regras de ocultação, ícones por SO,
+itens desabilitados com tooltip, ligação com o `SendJob`) e o `CloseGuard` do
+spike (4.5). **18 casos novos no `plugintest`**, que carrega o `.so` pelo mesmo
+caminho do KIO e dirige a tailnet por `$TAILSHARE_TAILSCALE`: os cinco casos de
+MIME, menu montado a partir de `running-tailnet.json`, item desabilitado com
+motivo, e o submenu sumindo com backend parado, sem login, tailnet vazia, JSON
+malformado, comando falhando, comando pendurado (`sleep 5`, volta em <1 s) e
+seleção remota `sftp://`.
+
+**Falta o QA manual no Dolphin real**, que não dá para automatizar nesta
+máquina (sessão Wayland, sem `xdotool`/`ydotool`):
+- os cinco casos de MIME de fato mostrando o submenu;
+- um envio ponta a ponta pelo menu;
+- `tailscale down` com o menu aberto;
+- o aviso ao fechar a janela durante uma transferência — o spike de 4.5.
+
+**Pronto quando:** os quatro itens acima estiverem observados e registrados.
 
 ### Fase 4 — i18n e empacotamento
 `pt_BR.po` e extração do catálogo (as strings já nascem em `i18n()`; o
@@ -412,13 +448,17 @@ senão todo envio é recusado com `Access denied` (3.5).
 As seis perguntas da versão anterior foram todas respondidas e viraram linhas da
 seção 1. Restam dois pontos:
 
-1. **Aviso ao fechar o Dolphin** — viabilidade só se sabe no spike da Fase 3
-   (4.3). Plano B já decidido.
+1. **Aviso ao fechar o Dolphin** — o `CloseGuard` está escrito (4.5), mas
+   filtrar `QEvent::Close` na janela do host não é API suportada e **só o QA
+   manual no Dolphin real diz se funciona**. Plano B já decidido.
 2. **Fixtures de `Stopped` e `NeedsLogin`** — escritas com `Peer: null` por
    suposição, ainda não conferidas contra um `tailscale down` real (ver 3.4).
+3. **Os cinco casos de MIME no Dolphin real** — passam contra a regra do KIO
+   replicada em teste (3.6); falta ver o submenu aparecer de verdade.
 
 Resolvidos desde a versão anterior:
 
+- ~~**Seleção mista arquivo + pasta**~~ — casa; ver 3.6.
 - ~~**Nome do ZIP único** em seleção mista~~ — implementado e testado conforme
   a proposta de 4.1.
 - ~~**Renomear o diretório e o remote**~~ — feito: o diretório é `tailshare` e o

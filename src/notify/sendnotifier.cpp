@@ -35,16 +35,6 @@ SendNotifier::~SendNotifier()
     closeProgress();
 }
 
-int SendNotifier::delay() const
-{
-    return m_delay;
-}
-
-void SendNotifier::setDelay(int milliseconds)
-{
-    m_delay = qMax(0, milliseconds);
-}
-
 QString SendNotifier::componentName()
 {
     return QStringLiteral("tailshare");
@@ -63,7 +53,7 @@ void SendNotifier::onStateChanged(SendJob::State state)
             m_progress->setText(SendMessages::text(*m_job));
             m_progress->setIconName(SendMessages::iconName(*m_job));
         } else if (!m_delayTimer->isActive()) {
-            m_delayTimer->start(m_delay);
+            m_delayTimer->start(DefaultDelayMs);
         }
         return;
     }

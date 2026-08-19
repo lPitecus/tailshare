@@ -56,12 +56,6 @@ void CloseGuard::watch(QWidget *widget, SendJob *job)
     guard->add(job);
 }
 
-int CloseGuard::activeJobs(QWidget *widget)
-{
-    CloseGuard *guard = guards().value(topLevelOf(widget));
-    return guard ? guard->pruneAndCount() : 0;
-}
-
 void CloseGuard::add(SendJob *job)
 {
     m_jobs.append(QPointer<SendJob>(job));

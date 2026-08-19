@@ -52,7 +52,6 @@ public:
     ~SendJob() override;
 
     /** The tailscale executable; defaults to the one found in PATH. */
-    QString program() const;
     void setProgram(const QString &program);
 
     /**

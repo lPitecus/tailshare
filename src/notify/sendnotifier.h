@@ -47,9 +47,6 @@ public:
     explicit SendNotifier(SendJob *job, QObject *parent = nullptr);
     ~SendNotifier() override;
 
-    int delay() const;
-    void setDelay(int milliseconds);
-
     /** The notifyrc this notifier reads its events from. */
     static QString componentName();
 
@@ -59,7 +56,6 @@ private:
     void closeProgress();
 
     SendJob *m_job = nullptr;
-    int m_delay = DefaultDelayMs;
     QTimer *m_delayTimer = nullptr;
     QPointer<KNotification> m_progress;
 };

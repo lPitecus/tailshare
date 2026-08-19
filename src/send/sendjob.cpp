@@ -61,11 +61,6 @@ SendJob::~SendJob()
     }
 }
 
-QString SendJob::program() const
-{
-    return m_program;
-}
-
 void SendJob::setProgram(const QString &program)
 {
     m_program = program;

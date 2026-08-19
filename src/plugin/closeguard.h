@@ -35,9 +35,6 @@ public:
     /** Watches the window @p widget belongs to for as long as @p job runs. */
     static void watch(QWidget *widget, SendJob *job);
 
-    /** Transfers the window is still waiting on; finished ones do not count. */
-    static int activeJobs(QWidget *widget);
-
 protected:
     bool eventFilter(QObject *watched, QEvent *event) override;
 

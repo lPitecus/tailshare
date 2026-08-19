@@ -204,6 +204,20 @@ menu já não oferecer dispositivo que o Taildrop diz inalcançável.
 | A lista de dispositivos continua vazia em `NeedsLogin`, por outro motivo | a suíte passa sem alteração com a fixture nova | Antes era vazia porque `Peer` era `null`; agora é vazia porque o peer residual não tem `DNSName` e o parser o descarta, que é a regra de 3.4 — o comportamento certo, pelo motivo certo |
 | O submenu some por causa do **estado**, não da lista vazia | o `plugintest staysAwayWhenTheBackendIsNotRunning(stopped)` continua passando com a fixture nova, que tem 4 dispositivos | Antes o teste não sabia distinguir as duas causas; agora sabe |
 
+### 3.9 Achados das verificações antes da publicação (Fase 6)
+
+| Fato | Como foi verificado | Consequência |
+|---|---|---|
+| O projeto compila **sem um aviso sequer** também no clang | árvore paralela `build-clang` com `CC=clang CXX=clang++`, build completo: 0 avisos | Segundo compilador concorda com o gcc; os avisos que o `KDECompilerSettings` liga já estavam sendo respeitados |
+| `clang-tidy` não acha código morto nenhum **dentro** de um arquivo | `misc-unused-*`, `readability-redundant-declaration` e `clang-diagnostic-unused*` sobre os 13 `.cpp` de `src/`: 0 avisos | O que sobra é o que nenhuma dessas checagens vê: função pública que ninguém chama |
+| O `compile_commands.json` do gcc **não serve** para o clang-tidy | `error: unknown argument: '-mno-direct-extern-access'` | Daí a árvore `build-clang` separada, que de quebra dá o segundo compilador |
+| Quatro funções mortas, achadas por análise de símbolos | `nm --defined-only` × `nm --undefined-only` sobre os 37 objetos, filtrando moc e templates do Qt: 18 candidatos, reduzidos a 4 conferindo cada um no código-fonte | `SendNotifier::delay()`/`setDelay()` (o atraso da notificação nunca foi configurado por ninguém — é sempre `DefaultDelayMs`), `CloseGuard::activeJobs()` (quem conta é o `pruneAndCount()` privado) e `SendJob::program()`. Removidas |
+| O `nm` sozinho não decide nada | ele não enxerga chamada dentro da mesma unidade de compilação, então acusou métodos privados e *slots* que estão vivos | A lista dele é ponto de partida; a decisão veio de `grep` no fonte, um a um |
+| O `cppcheck --enable=unusedFunction` acha **3 das 4** | rodado sobre `src/ tools/ tests/` com `--library=qt` no código anterior à remoção: acusou `activeJobs`, `delay` e `setDelay`, e não `SendJob::program()` | Confirmação independente da análise por símbolos, mas incompleta |
+| **Por que ele perdeu a quarta:** o `unusedFunction` casa a função pelo **nome simples**, sem a classe | experimento com duas iscas em `SendJob`: `program()` (nome que colide com `TailscaleClient::program()`, viva) e `programUniqueName()` (nome inédito). Só a segunda foi acusada | Ponto cego sério em código Qt, cheio de getters homônimos entre classes (`program()`, `timeout()`, `name()`). O cppcheck **não substitui** a análise por símbolos aqui; os dois se complementam |
+| O `cppcheck` acusa todos os *slots* de teste como não usados | 83 avisos, todos em `tests/` | Falso positivo conhecido: quem chama os slots do `QTest` é o moc, em tempo de execução. Ruído a filtrar, não achado |
+| `misc-include-cleaner` não achou nenhum *include* sobrando | 61 avisos, **todos** do tipo "não incluído diretamente" (estilo IWYU) | Nada a remover; adotar IWYU seria mudança de estilo, não limpeza de código morto |
+
 ## 4. Arquitetura
 
 Um artefato instalável (o plugin) sobre uma lib de núcleo testável. O envio roda
@@ -503,6 +517,14 @@ espaços e acentos, peer offline, peer sem Taildrop, tailnet só com self,
 `sftp://`. Inclui conferir a saída real de `status --json` com `tailscale down`
 e sem login, para corrigir as fixtures `stopped.json` e `needs-login.json` (3.4).
 **Pronto quando:** cada caso tem comportamento observado e documentado no README.
+
+### Fase 6 — Verificações antes da publicação (em andamento)
+Pedida antes de tornar o repositório público: varredura de código morto e de
+vulnerabilidades. **Código morto: feito** — quatro funções removidas, achadas
+por análise de símbolos e confirmadas em parte pelo `cppcheck` (3.9). O `clazy`
+e a verificação de vulnerabilidades seguem pendentes.
+**Pronto quando:** as ferramentas rodam limpas ou cada aviso restante tem uma
+linha dizendo por que fica.
 
 ---
 

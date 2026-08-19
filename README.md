@@ -37,7 +37,7 @@ packed into a single ZIP before sending.
 
 **Build**
 
-- CMake 3.20+, a C++20 compiler
+- CMake 3.20+, a C++17 compiler
 - Qt 6.6+
 - KDE Frameworks 6: Extra CMake Modules, CoreAddons, KIO, I18n, Notifications, Archive
 - gettext, to compile the message catalogs

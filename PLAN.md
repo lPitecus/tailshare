@@ -221,6 +221,26 @@ menu já não oferecer dispositivo que o Taildrop diz inalcançável.
 | Código morto **de escopo de arquivo** o compilador já pega sozinho | a mesma isca, sendo `static`, saiu como `-Wunused-function` | Explica por que o `nm` só era necessário para função de ligação externa: o que é `static` nunca chegaria a passar despercebido |
 | `misc-include-cleaner` não achou nenhum *include* sobrando | 61 avisos, **todos** do tipo "não incluído diretamente" (estilo IWYU) | Nada a remover; adotar IWYU seria mudança de estilo, não limpeza de código morto |
 
+### 3.10 Achados da varredura de vulnerabilidades (Fase 6)
+
+| Fato | Como foi verificado | Consequência |
+|---|---|---|
+| **Nenhuma credencial** no histórico | `gitleaks git` sobre os 26 commits: *no leaks found* | Nada de token, chave ou senha para expurgar antes de publicar |
+| Nenhum IP, sufixo MagicDNS ou caminho pessoal vazou | `git grep` em **todos** os commits por `taild8087c`, os IPs `100.x` da tailnet, o IP público, `/home/tuzin` e o usuário: zero ocorrências | As fixtures foram de fato anonimizadas no que importa |
+| **Nomes reais de dispositivo** estão no repositório | mesmo `git grep`: `home-tuzin`, `iphone172` e `tcl-smart-tv` aparecem no `PLAN.md` e em `tests/fixtures/peer-offline.json` | Dado pessoal de baixa gravidade — nome de máquina não dá acesso a nada —, mas fica público junto com o repositório. Decisão do dono |
+| **Dois e-mails diferentes** ficam públicos | `git log --format=%ae`: todos os commits são de `tuzaum.silva@gmail.com`; o `packaging/PKGBUILD` traz `arthur.silva@serutil.com` na linha *Maintainer* | O segundo foi escrito por mim a partir do e-mail configurado no ambiente, não por decisão do autor. Vale escolher qual dos dois é o endereço do projeto |
+| Execução de processo **não passa por shell** | `QProcess::setProgram()` + `setArguments()` (lista), em `tailscaleclient.cpp:78` e `sendjob.cpp:191`; nenhum `system()`, `popen()` ou `start()` com string única no projeto | Injeção de comando por nome de arquivo não se aplica. O `--` de `commandArguments()` ainda protege contra arquivo chamado `-v` |
+| Temporários vão para `$XDG_RUNTIME_DIR` | `workDirTemplate()` em `sendjob.cpp:32`, com `QTemporaryDir` (0700, sufixo aleatório) e queda para `/tmp` só se aquele não servir | Uma transferência interrompida não deixa cópia dos arquivos do usuário em `/tmp` legível por todos |
+| **Sem *zip slip***: nomes de entrada são relativos | ZIP capturado de uma pasta real e inspecionado: todas as entradas sob `Pasta/`, nenhuma com `../` ou caminho absoluto | Extrair no dispositivo que recebe não escreve fora do destino |
+| **Symlink é guardado como symlink, nunca seguido** | pasta montada com link válido para fora da seleção (`../segredo/chave.txt`) e link absoluto (`/etc/hostname`): as entradas no ZIP têm 20 e 13 bytes — o *caminho*, não o conteúdo | Enviar uma pasta **não** exfiltra arquivo de fora da seleção |
+| ⚠️ **Symlink quebrado é descartado em silêncio** | o `link-quebrado.txt` estava na pasta e não apareceu no ZIP, sem aviso nenhum | Perda de dado sem avisar. Não é segurança, é correção — item em aberto |
+| ⚠️ `$TAILSHARE_TAILSCALE` faz o plugin executar **qualquer binário** dentro do Dolphin | `TailscaleClient::findExecutable()`, `tailscaleclient.cpp:24` | Quem escreve no seu ambiente já executa código como você, então não há ganho de privilégio — mas num binário publicado é uma armadilha silenciosa. Decisão em aberto |
+| `clang-analyzer`, `bugprone`, `cert` e `concurrency` acham 3 avisos, **nenhum de segurança** | `clang-tidy` sobre `src/`: um no arquivo gerado pelo moc, um `bugprone-narrowing-conversions` em `itemCount()` (`qsizetype`→`int`, exigiria seleção de 2 bilhões de arquivos) e um `bugprone-branch-clone` no `switch` do `cancel()` | Nenhum vira correção urgente; os dois últimos são qualidade |
+| `cppcheck --enable=all` acha 12, **nenhum de segurança** | todos `returnByReference` e `shadowFunction` | O conselho de devolver `QString` por referência **não vale** para Qt: `QString` é implicitamente compartilhada, devolver por valor é barato e é o idioma |
+| Suíte **limpa sob ASan e UBSan** | `ECM_ENABLE_SANITIZERS='address;undefined'` e `ctest`: 11/11 passam, zero erro de endereço ou de comportamento indefinido | Nenhum acesso inválido nem comportamento indefinido nos caminhos que os testes cobrem |
+| Objetos de menu **acumulam sob a janela**, e a maior parte não é nossa | isca medindo `findChildren` depois de repetir o caminho real do KIO cinco vezes: **27 `QAction` e 5 `QMenu` por volta**, dos quais 6 e 1 vêm do tailshare | É o padrão do `KFileItemActions` para qualquer plugin — o cabeçalho do KIO manda parentear no `parentWidget` que ele passa. Não é defeito nosso, mas é bom saber que existe |
+| O README pedia **C++20** e o projeto compila em **C++17** | `-std=c++17` nos `flags.make`, vindo do `KDECompilerSettings`; nada no nosso CMake pede outro padrão | README corrigido: um compilador C++17 basta |
+
 ## 4. Arquitetura
 
 Um artefato instalável (o plugin) sobre uma lib de núcleo testável. O envio roda
@@ -526,8 +546,13 @@ Pedida antes de tornar o repositório público: varredura de código morto e de
 vulnerabilidades. **Código morto: feito** — quatro funções removidas, achadas
 por análise de símbolos e confirmadas em parte pelo `cppcheck`; `clang-tidy`,
 `clazy` (níveis 0 a 2) e os dois compiladores rodam sem um aviso, e o "nenhum
-achado" de cada ferramenta foi provado com isca (3.9). **Falta** a verificação
-de vulnerabilidades.
+achado" de cada ferramenta foi provado com isca (3.9). **Vulnerabilidades: as cinco
+verificações rodaram** (3.10) — `gitleaks` no histórico, `clang-tidy` de
+segurança, `cppcheck --enable=all`, a suíte sob ASan/UBSan e a revisão manual da
+superfície de ataque. **Nenhuma vulnerabilidade encontrada.** Restam quatro
+decisões do dono, listadas em 3.10: nomes reais de dispositivo no repositório,
+qual e-mail é o do projeto, o symlink quebrado descartado em silêncio e o
+`$TAILSHARE_TAILSCALE`.
 **Pronto quando:** as ferramentas rodam limpas ou cada aviso restante tem uma
 linha dizendo por que fica.
 

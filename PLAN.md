@@ -184,6 +184,8 @@ menu já não oferecer dispositivo que o Taildrop diz inalcançável.
 | O `ctest` já rodava um `appstreamtest` que ninguém escreveu | apareceu em `ctest -N`; vem de `KDECMakeSettings.cmake:177`, que adiciona o teste quando acha o `appstreamcli` | Passa vazio porque o projeto não instala metainfo AppStream. Publicar metainfo continua fora do escopo da v1 |
 | O `.pot` não é versionado | `.gitignore` já ignorava `*.pot` desde a Fase 0 | Segue a convenção do KDE: o template é gerado pelo `Messages.sh`, e o `translationstest` extrai o seu próprio em diretório temporário em vez de confiar num arquivo no repo |
 | O `PKGBUILD` não pode clonar por **https**: o repositório é privado | `makepkg` com `source=("…git+https://github.com/lPitecus/tailshare.git")` parou em `fatal: could not read Username for 'https://github.com'`; `gh repo view` confirma `"isPrivate": true` | A fonte do pacote é `git+ssh://git@github.com/…`, igual ao remote do repo. Trocar por https no dia em que o projeto for público — está anotado no próprio `PKGBUILD` |
+| O `makepkg` **reescreve a linha `pkgver=`** do PKGBUILD no diretório de origem | o arquivo versionado saiu do commit `af175e4` já com `0.1.0.r14.af175e4`, valor que o `pkgver()` calculou naquela execução | Comportamento documentado (`PKGBUILD(5)`, *"The pkgver variable can be automatically updated by providing a pkgver() function"*) e normal em pacote VCS. Consequência prática: todo `makepkg` suja o repositório em uma linha — é para commitar junto, não para reverter |
+| `gettext` sobrava no `makedepends` | `pacman -Si base-devel` lista `gettext` entre as dependências do meta-pacote, e a wiki do Arch diz que o `base-devel` é presumido instalado e seus membros não devem entrar no `makedepends` | Removido, com comentário no PKGBUILD explicando de onde vem o `msgfmt`. `git` e `cmake` continuam: nenhum dos dois está no `base-devel`, e as diretrizes de VCS exigem o `git` explícito |
 | O `makepkg` deixa um clone *bare* em `packaging/tailshare/` | apareceu como não rastreado no `git status` depois do primeiro `makepkg` | Entrou no `.gitignore`. Comentário de fim de linha **não** funciona em `.gitignore`: a primeira tentativa virou parte do padrão e o diretório continuou aparecendo |
 
 ## 4. Arquitetura
@@ -552,3 +554,16 @@ Resolvidos desde a versão anterior:
 - `extra-cmake-modules/kde-modules/KDEInstallDirs6.cmake` — `KNOTIFYRCDIR`, `PLUGINDIR`
 - Teste compilado localmente com Qt 6.11 para `QMimeType::inherits()` com
   `all/all`, `all/allfiles`, `application/octet-stream` e `inode/directory`
+
+**Empacotamento — Fase 4** (conferido depois de o pacote já estar instalado, a
+pedido do usuário, contra a documentação oficial e não contra a memória):
+- `man 5 PKGBUILD`, do `pacman 7.1.0` instalado nesta máquina — campos
+  obrigatórios (`pkgname`, `pkgver`, `pkgrel`, `arch`), `pkgver()` recalculado
+  após a extração, `package()` rodando sob `fakeroot` com `$pkgdir` como raiz do
+  pacote, `check()` entre `build()` e `package()`, e a forma
+  `source=('directory::url#fragment')` com prefixo `vcs+` para fontes VCS
+- Wiki do Arch, via Context7 — identificadores **SPDX** no campo `license`;
+  `base-devel` presumido instalado e seus membros fora do `makedepends`; sufixo
+  `-git` no `pkgname` de pacote VCS, com `provides`/`conflicts` explícitos e a
+  ferramenta de VCS no `makedepends`
+- `pacman -Si base-devel` nesta máquina — `gettext` está lá, `git` e `cmake` não

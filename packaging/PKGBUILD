@@ -5,7 +5,7 @@
 
 pkgname=tailshare-git
 _name=tailshare
-pkgver=0.1.0.r14.af175e4
+pkgver=0.1.0.r15.1dc269c
 pkgrel=1
 pkgdesc="Dolphin context menu for sending files to tailnet devices over Taildrop"
 arch=('x86_64' 'aarch64')
@@ -21,10 +21,12 @@ depends=(
     'qt6-base'
     'tailscale'
 )
+# base-devel is assumed to be installed, so its members are left out -- that is
+# where gettext (msgfmt, for the catalogs) comes from. git is here because the
+# source is a VCS one, as the VCS guidelines require.
 makedepends=(
     'cmake'
     'extra-cmake-modules'
-    'gettext'
     'git'
 )
 optdepends=('dolphin: the file manager the context menu plugs into')

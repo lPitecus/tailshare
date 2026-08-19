@@ -1,11 +1,16 @@
 # Maintainer: Arthur Silva <tuzaum.silva@gmail.com>
 #
-# Builds the current main branch. There is no release tag yet, so the version
-# is the one in CMakeLists.txt plus the commit this package was built from.
+# Builds the current main branch, for whoever wants to follow it. The released
+# version lives in PKGBUILD next to this file; the two cannot be installed at
+# once, which is what the provides/conflicts pair below is for.
+#
+# The version is the one in CMakeLists.txt plus the commit this was built from,
+# so makepkg rewrites the pkgver line below on every run -- that is expected,
+# and the change is meant to be committed, not reverted.
 
 pkgname=tailshare-git
 _name=tailshare
-pkgver=0.1.0.r15.1dc269c
+pkgver=0.1.0.r30.48771c9
 pkgrel=1
 pkgdesc="Dolphin context menu for sending files to tailnet devices over Taildrop"
 arch=('x86_64' 'aarch64')
@@ -32,10 +37,7 @@ makedepends=(
 optdepends=('dolphin: the file manager the context menu plugs into')
 provides=("$_name=$pkgver")
 conflicts=("$_name")
-# Cloned over SSH because the repository is still private: an https clone asks
-# for a username makepkg has no way to answer. Switch to "git+$url.git" the day
-# it goes public.
-source=("$_name::git+ssh://git@github.com/lPitecus/tailshare.git")
+source=("$_name::git+$url.git")
 sha256sums=('SKIP')
 
 pkgver() {

@@ -561,6 +561,22 @@ sabendo que `tcl-smart-tv` está na fixture `peer-offline.json` e que
 **Pronto:** as ferramentas rodam limpas, e o que sobrou de aviso tem linha em
 3.9 e 3.10 dizendo por que fica.
 
+### Fase 7 — Publicação (em andamento)
+O repositório passou a ser **público** em 19/08/2026, por `gh repo edit
+--visibility public`, depois de uma última passada do `gitleaks` (sem
+achados) e da confirmação de que o e-mail antigo não está mais na árvore. O
+que já era sabido e foi aceito ao abrir: o endereço antigo continua nos commits
+`e518a3c`..`22e3770`, e os nomes reais de dispositivo ficam (3.10).
+
+Com o repositório público, o clone por SSH deixou de ser necessário: o
+`packaging/PKGBUILD` virou `packaging/PKGBUILD-git` e voltou a clonar por
+`git+https`, o que foi verificado com um `makepkg` completo (clona, compila,
+11/11 testes, gera `tailshare-git 0.1.0.r30.48771c9-1`).
+
+**Falta:** marcar a `v0.1.0` e escrever o `packaging/PKGBUILD` de release, que
+só pode existir depois da tag — o `sha256sum` é do tarball que o GitHub gera a
+partir dela. O AUR ficou fora de escopo por ora.
+
 ---
 
 ## 7. Dependências

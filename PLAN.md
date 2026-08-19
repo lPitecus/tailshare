@@ -227,7 +227,7 @@ menu já não oferecer dispositivo que o Taildrop diz inalcançável.
 |---|---|---|
 | **Nenhuma credencial** no histórico | `gitleaks git` sobre os 26 commits: *no leaks found* | Nada de token, chave ou senha para expurgar antes de publicar |
 | Nenhum IP, sufixo MagicDNS ou caminho pessoal vazou | `git grep` em **todos** os commits por `taild8087c`, os IPs `100.x` da tailnet, o IP público, `/home/tuzin` e o usuário: zero ocorrências | As fixtures foram de fato anonimizadas no que importa |
-| **Nomes reais de dispositivo** estão no repositório | mesmo `git grep`: `home-tuzin`, `iphone172` e `tcl-smart-tv` aparecem no `PLAN.md` e em `tests/fixtures/peer-offline.json` | Dado pessoal de baixa gravidade — nome de máquina não dá acesso a nada —, mas fica público junto com o repositório. Decisão do dono |
+| **Nomes reais de dispositivo** estão no repositório | mesmo `git grep`: `home-tuzin`, `iphone172` e `tcl-smart-tv` aparecem no `PLAN.md` e em `tests/fixtures/peer-offline.json` | Dado pessoal de baixa gravidade — nome de máquina não dá acesso a nada —, mas fica público junto com o repositório. **Decidido: ficam.** Não é descuido, é escolha registrada |
 | O `PKGBUILD` trazia um **e-mail diferente** do dos commits | `git log --format=%ae` dá `tuzaum.silva@gmail.com` em todos os commits; a linha *Maintainer* do `packaging/PKGBUILD` trazia o endereço de trabalho do autor | Aquela linha foi escrita pelo agente a partir do e-mail configurado no ambiente da sessão, sem avisar — publicar um endereço é decisão de quem é dono dele. **Resolvido:** os dois passaram a ser `tuzaum.silva@gmail.com`. O endereço antigo continua no histórico de um repositório que nunca foi público; expurgá-lo custaria reescrever todos os hashes que este plano registra, o que não compensa |
 | Execução de processo **não passa por shell** | `QProcess::setProgram()` + `setArguments()` (lista), em `tailscaleclient.cpp:78` e `sendjob.cpp:191`; nenhum `system()`, `popen()` ou `start()` com string única no projeto | Injeção de comando por nome de arquivo não se aplica. O `--` de `commandArguments()` ainda protege contra arquivo chamado `-v` |
 | Temporários vão para `$XDG_RUNTIME_DIR` | `workDirTemplate()` em `sendjob.cpp:32`, com `QTemporaryDir` (0700, sufixo aleatório) e queda para `/tmp` só se aquele não servir | Uma transferência interrompida não deixa cópia dos arquivos do usuário em `/tmp` legível por todos |
@@ -543,7 +543,7 @@ espaços e acentos, peer offline, peer sem Taildrop, tailnet só com self,
 e sem login, para corrigir as fixtures `stopped.json` e `needs-login.json` (3.4).
 **Pronto quando:** cada caso tem comportamento observado e documentado no README.
 
-### Fase 6 — Verificações antes da publicação (em andamento)
+### ✅ Fase 6 — Verificações antes da publicação (concluída, `71ea9b0` … `7304338`)
 Pedida antes de tornar o repositório público: varredura de código morto e de
 vulnerabilidades. **Código morto: feito** — quatro funções removidas, achadas
 por análise de símbolos e confirmadas em parte pelo `cppcheck`; `clang-tidy`,
@@ -551,13 +551,15 @@ por análise de símbolos e confirmadas em parte pelo `cppcheck`; `clang-tidy`,
 achado" de cada ferramenta foi provado com isca (3.9). **Vulnerabilidades: as cinco
 verificações rodaram** (3.10) — `gitleaks` no histórico, `clang-tidy` de
 segurança, `cppcheck --enable=all`, a suíte sob ASan/UBSan e a revisão manual da
-superfície de ataque. **Nenhuma vulnerabilidade encontrada.** Das quatro decisões que
-sobraram, três estão fechadas: o e-mail do pacote passou a ser o mesmo dos
-commits, o symlink quebrado deixou de sumir e a variável de ambiente passou a
-exigir caminho absoluto. **Falta** decidir sobre os nomes reais de dispositivo
-que estão no `PLAN.md` e na fixture `peer-offline.json`.
-**Pronto quando:** as ferramentas rodam limpas ou cada aviso restante tem uma
-linha dizendo por que fica.
+superfície de ataque. **Nenhuma vulnerabilidade encontrada.** As quatro decisões que sobraram estão
+fechadas: o e-mail do pacote passou a ser o mesmo dos commits, o symlink
+quebrado deixou de sumir, a variável de ambiente passou a exigir caminho
+absoluto, e os nomes reais de dispositivo **ficam** — decisão do dono, tomada
+sabendo que `tcl-smart-tv` está na fixture `peer-offline.json` e que
+`home-tuzin` e `iphone172` estão neste plano.
+
+**Pronto:** as ferramentas rodam limpas, e o que sobrou de aviso tem linha em
+3.9 e 3.10 dizendo por que fica.
 
 ---
 

@@ -183,6 +183,8 @@ menu já não oferecer dispositivo que o Taildrop diz inalcançável.
 | O `msgcmp` reprova string nova sem tradução | uma `i18n()` temporária foi acrescentada a `taildropreason.cpp` e `tests/check-translations.sh` saiu com código 1: *"this message is used but not defined"* | O `translationstest` é guarda de verdade, não decoração: strings novas não passam despercebidas |
 | O `ctest` já rodava um `appstreamtest` que ninguém escreveu | apareceu em `ctest -N`; vem de `KDECMakeSettings.cmake:177`, que adiciona o teste quando acha o `appstreamcli` | Passa vazio porque o projeto não instala metainfo AppStream. Publicar metainfo continua fora do escopo da v1 |
 | O `.pot` não é versionado | `.gitignore` já ignorava `*.pot` desde a Fase 0 | Segue a convenção do KDE: o template é gerado pelo `Messages.sh`, e o `translationstest` extrai o seu próprio em diretório temporário em vez de confiar num arquivo no repo |
+| O `PKGBUILD` não pode clonar por **https**: o repositório é privado | `makepkg` com `source=("…git+https://github.com/lPitecus/tailshare.git")` parou em `fatal: could not read Username for 'https://github.com'`; `gh repo view` confirma `"isPrivate": true` | A fonte do pacote é `git+ssh://git@github.com/…`, igual ao remote do repo. Trocar por https no dia em que o projeto for público — está anotado no próprio `PKGBUILD` |
+| O `makepkg` deixa um clone *bare* em `packaging/tailshare/` | apareceu como não rastreado no `git status` depois do primeiro `makepkg` | Entrou no `.gitignore`. Comentário de fim de linha **não** funciona em `.gitignore`: a primeira tentativa virou parte do padrão e o diretório continuou aparecendo |
 
 ## 4. Arquitetura
 
@@ -436,8 +438,13 @@ temporário e reprova, via `msgcmp` e `msgfmt --check`, qualquer catálogo de
 
 **Verificado:** `ctest` 100% (11 testes) com `LANG=en_US` **e** com
 `LANG=pt_BR`; a UI sai em pt-BR a partir do build tree, sem instalar nada
-(3.7).
-**Falta:** rodar o `makepkg -si` de fato — item de fechamento desta fase.
+(3.7); `makepkg` nesta máquina clona, compila, roda a suíte no `check()` e gera
+`tailshare-git-0.1.0.r13.e518a3c-1-x86_64.pkg.tar.zst` com exatamente quatro
+arquivos — o `.so` em `usr/lib/qt6/plugins/kf6/kfileitemaction/`, o
+`tailshare.mo` em `usr/share/locale/pt_BR/LC_MESSAGES/`, o `.notifyrc` em
+`usr/share/knotifications6/` e a licença.
+**Falta:** o `pacman -U` em si e o Dolphin reiniciado sobre o pacote instalado.
+Aqui o `sudo` pede senha, então esse passo é do usuário.
 
 ### Fase 5 — QA manual
 Roteiro fechado: arquivo único, múltiplos arquivos, pasta, pasta grande, nome com

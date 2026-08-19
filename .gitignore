@@ -27,6 +27,8 @@ ui_*.h
 # --- Empacotamento (makepkg) ---
 packaging/pkg/
 packaging/src/
+# clone bare que o makepkg faz da fonte
+packaging/tailshare/
 packaging/*.pkg.tar.*
 packaging/*.tar.gz
 

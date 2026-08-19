@@ -68,8 +68,12 @@ cd packaging
 makepkg -si
 ```
 
-The package is named `tailshare-git` and runs the test suite as part of the
-build. Remove it with `sudo pacman -R tailshare-git`.
+The package is named `tailshare-git`, runs the test suite as part of the build,
+and installs the plugin, the message catalogs and the notification events under
+`/usr`. Remove it with `sudo pacman -R tailshare-git`.
+
+While the repository is private the clone goes over SSH, so building it needs a
+key GitHub accepts; an https clone would stop to ask for a username.
 
 ### Anywhere else
 

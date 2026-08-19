@@ -5,7 +5,7 @@
 
 pkgname=tailshare-git
 _name=tailshare
-pkgver=0.1.0.r0.0000000
+pkgver=0.1.0.r13.e518a3c
 pkgrel=1
 pkgdesc="Dolphin context menu for sending files to tailnet devices over Taildrop"
 arch=('x86_64' 'aarch64')
@@ -30,7 +30,10 @@ makedepends=(
 optdepends=('dolphin: the file manager the context menu plugs into')
 provides=("$_name=$pkgver")
 conflicts=("$_name")
-source=("$_name::git+$url.git")
+# Cloned over SSH because the repository is still private: an https clone asks
+# for a username makepkg has no way to answer. Switch to "git+$url.git" the day
+# it goes public.
+source=("$_name::git+ssh://git@github.com/lPitecus/tailshare.git")
 sha256sums=('SKIP')
 
 pkgver() {

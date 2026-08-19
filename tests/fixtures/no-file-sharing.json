@@ -1,0 +1,20 @@
+{
+  "BackendState": "Running",
+  "Self": {
+    "HostName": "workstation",
+    "DNSName": "workstation.tail1234.ts.net.",
+    "OS": "linux",
+    "Online": true,
+    "TaildropTarget": 0
+  },
+  "Peer": {
+    "nodekey:6666666666666666666666666666666666666666666666666666666666666666": {
+      "HostName": "ci-runner",
+      "DNSName": "ci-runner.tail1234.ts.net.",
+      "OS": "linux",
+      "Online": true,
+      "TaildropTarget": 9,
+      "NoFileSharingReason": "node is owned by a different user"
+    }
+  }
+}

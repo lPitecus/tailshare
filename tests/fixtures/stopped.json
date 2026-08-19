@@ -1,0 +1,12 @@
+{
+  "Version": "1.102.2",
+  "BackendState": "Stopped",
+  "Self": {
+    "HostName": "workstation",
+    "DNSName": "workstation.tail1234.ts.net.",
+    "OS": "linux",
+    "Online": false,
+    "TaildropTarget": 3
+  },
+  "Peer": null
+}

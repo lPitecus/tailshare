@@ -3,6 +3,12 @@
 
 add_library(tailshare_core STATIC
     version.cpp
+    device.cpp
+    devices.cpp
+    statusparser.cpp
+    taildropreason.cpp
+    tailscaleclient.cpp
+    sendplan.cpp
 )
 
 target_include_directories(tailshare_core
@@ -11,10 +17,12 @@ target_include_directories(tailshare_core
 
 target_link_libraries(tailshare_core
     PUBLIC Qt6::Core
+    PRIVATE KF6::I18n
 )
 
 target_compile_definitions(tailshare_core
     PRIVATE TAILSHARE_VERSION_STRING="${PROJECT_VERSION}"
+    PRIVATE TRANSLATION_DOMAIN="tailshare"
 )
 
 # The plugin that links this is a shared module.

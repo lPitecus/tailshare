@@ -1,0 +1,20 @@
+{
+  "BackendState": "Running",
+  "Self": {
+    "HostName": "workstation",
+    "DNSName": "workstation.tail1234.ts.net.",
+    "OS": "linux",
+    "Online": true,
+    "TaildropTarget": 0
+  },
+  "Peer": {
+    "nodekey:5555555555555555555555555555555555555555555555555555555555555555": {
+      "HostName": "tcl-smart-tv",
+      "DNSName": "tcl-smart-tv.tail1234.ts.net.",
+      "OS": "android",
+      "Online": false,
+      "TaildropTarget": 5,
+      "NoFileSharingReason": ""
+    }
+  }
+}

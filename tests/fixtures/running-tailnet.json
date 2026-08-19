@@ -1,0 +1,47 @@
+{
+  "Version": "1.102.2",
+  "BackendState": "Running",
+  "MagicDNSSuffix": "tail1234.ts.net",
+  "Self": {
+    "HostName": "workstation",
+    "DNSName": "workstation.tail1234.ts.net.",
+    "OS": "linux",
+    "Online": true,
+    "TaildropTarget": 0,
+    "NoFileSharingReason": ""
+  },
+  "Peer": {
+    "nodekey:1111111111111111111111111111111111111111111111111111111111111111": {
+      "HostName": "home-nas",
+      "DNSName": "home-nas.tail1234.ts.net.",
+      "OS": "linux",
+      "Online": true,
+      "TaildropTarget": 1,
+      "NoFileSharingReason": ""
+    },
+    "nodekey:2222222222222222222222222222222222222222222222222222222222222222": {
+      "HostName": "localhost",
+      "DNSName": "iphone-9.tail1234.ts.net.",
+      "OS": "iOS",
+      "Online": true,
+      "TaildropTarget": 1,
+      "NoFileSharingReason": ""
+    },
+    "nodekey:3333333333333333333333333333333333333333333333333333333333333333": {
+      "HostName": "pc-casa",
+      "DNSName": "pc-casa.tail1234.ts.net.",
+      "OS": "windows",
+      "Online": false,
+      "TaildropTarget": 5,
+      "NoFileSharingReason": ""
+    },
+    "nodekey:4444444444444444444444444444444444444444444444444444444444444444": {
+      "HostName": "Aurora",
+      "DNSName": "aurora.tail1234.ts.net.",
+      "OS": "macOS",
+      "Online": true,
+      "TaildropTarget": 4,
+      "NoFileSharingReason": "file sharing not enabled by Tailscale admin"
+    }
+  }
+}

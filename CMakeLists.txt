@@ -38,4 +38,8 @@ ecm_set_disabled_deprecation_versions(
 
 add_subdirectory(src/core)
 
+if(BUILD_TESTING)
+    add_subdirectory(tests)
+endif()
+
 feature_summary(WHAT ALL INCLUDE_QUIET_PACKAGES FATAL_ON_MISSING_REQUIRED_PACKAGES)

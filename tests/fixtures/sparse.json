@@ -1,0 +1,21 @@
+{
+  "BackendState": "Running",
+  "Peer": {
+    "nodekey:7777777777777777777777777777777777777777777777777777777777777777": {
+      "DNSName": "mystery.tail1234.ts.net."
+    },
+    "nodekey:8888888888888888888888888888888888888888888888888888888888888888": {
+      "HostName": "nameless",
+      "OS": "linux",
+      "Online": true,
+      "TaildropTarget": 1
+    },
+    "nodekey:9999999999999999999999999999999999999999999999999999999999999999": {
+      "HostName": "from-the-future",
+      "DNSName": "from-the-future.tail1234.ts.net.",
+      "OS": "plan9",
+      "Online": true,
+      "TaildropTarget": 42
+    }
+  }
+}

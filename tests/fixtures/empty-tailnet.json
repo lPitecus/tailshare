@@ -1,0 +1,11 @@
+{
+  "BackendState": "Running",
+  "Self": {
+    "HostName": "workstation",
+    "DNSName": "workstation.tail1234.ts.net.",
+    "OS": "linux",
+    "Online": true,
+    "TaildropTarget": 0
+  },
+  "Peer": null
+}

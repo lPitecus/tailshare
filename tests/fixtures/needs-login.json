@@ -1,0 +1,7 @@
+{
+  "Version": "1.102.2",
+  "BackendState": "NeedsLogin",
+  "AuthURL": "https://login.tailscale.com/a/0123456789ab",
+  "Self": null,
+  "Peer": null
+}

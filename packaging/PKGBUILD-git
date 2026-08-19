@@ -10,7 +10,7 @@
 
 pkgname=tailshare-git
 _name=tailshare
-pkgver=0.1.0.r30.48771c9
+pkgver=0.1.0.r31.1907d1d
 pkgrel=1
 pkgdesc="Dolphin context menu for sending files to tailnet devices over Taildrop"
 arch=('x86_64' 'aarch64')
@@ -50,19 +50,19 @@ pkgver() {
 }
 
 build() {
-    cmake -B build -S "$_name" \
+    cmake -B "$pkgname-build" -S "$_name" \
         -DCMAKE_BUILD_TYPE=RelWithDebInfo \
         -DCMAKE_INSTALL_PREFIX=/usr \
         -DBUILD_TOOLS=OFF \
         -Wno-dev
-    cmake --build build
+    cmake --build "$pkgname-build"
 }
 
 check() {
-    ctest --test-dir build --output-on-failure
+    ctest --test-dir "$pkgname-build" --output-on-failure
 }
 
 package() {
-    DESTDIR="$pkgdir" cmake --install build
+    DESTDIR="$pkgdir" cmake --install "$pkgname-build"
     install -Dm644 "$_name/LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
 }

@@ -1,0 +1,50 @@
+# Maintainer: Arthur Silva <tuzaum.silva@gmail.com>
+#
+# The released version. PKGBUILD-git next to this file builds the current main
+# branch instead; the two provide the same thing and cannot be installed at
+# once.
+
+pkgname=tailshare
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="Dolphin context menu for sending files to tailnet devices over Taildrop"
+arch=('x86_64' 'aarch64')
+url="https://github.com/lPitecus/tailshare"
+license=('GPL-2.0-or-later')
+depends=(
+    'kcoreaddons'
+    'kio'
+    'ki18n'
+    'knotifications'
+    'karchive'
+    'kwidgetsaddons'
+    'qt6-base'
+    'tailscale'
+)
+# base-devel is assumed to be installed, so its members are left out -- that is
+# where gettext (msgfmt, for the catalogs) comes from.
+makedepends=(
+    'cmake'
+    'extra-cmake-modules'
+)
+optdepends=('dolphin: the file manager the context menu plugs into')
+source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
+sha256sums=('53e938bb15f966495bce14f87e93cff81cdea1e23a6126d686e60e14c8ffb9e0')
+
+build() {
+    cmake -B "$pkgname-build" -S "$pkgname-$pkgver" \
+        -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+        -DCMAKE_INSTALL_PREFIX=/usr \
+        -DBUILD_TOOLS=OFF \
+        -Wno-dev
+    cmake --build "$pkgname-build"
+}
+
+check() {
+    ctest --test-dir "$pkgname-build" --output-on-failure
+}
+
+package() {
+    DESTDIR="$pkgdir" cmake --install "$pkgname-build"
+    install -Dm644 "$pkgname-$pkgver/LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

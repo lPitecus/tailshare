@@ -65,20 +65,22 @@ ctest --test-dir build --output-on-failure
 
 ### Arch / CachyOS
 
-The `PKGBUILD` in [packaging/](packaging) builds the current `main` branch, so
-it clones the repository itself and nothing else is needed in the directory:
+[packaging/](packaging) holds two recipes, and both fetch the sources
+themselves — nothing else has to be in the directory:
 
 ```sh
 cd packaging
-makepkg -si
+makepkg -si                     # tailshare, the released version
+makepkg -p PKGBUILD-git -si     # tailshare-git, the current main branch
 ```
 
-The package is named `tailshare-git`, runs the test suite as part of the build,
-and installs the plugin, the message catalogs and the notification events under
-`/usr`. Remove it with `sudo pacman -R tailshare-git`.
+They provide the same thing and cannot be installed at once; pacman replaces one
+with the other. Either way the test suite runs as part of the build, and the
+plugin, the message catalogs and the notification events land under `/usr`.
+Remove with `sudo pacman -R tailshare` (or `tailshare-git`).
 
-While the repository is private the clone goes over SSH, so building it needs a
-key GitHub accepts; an https clone would stop to ask for a username.
+`makepkg` rewrites the `pkgver=` line of `PKGBUILD-git` on every run, which is
+how VCS packages work — that change is meant to be committed, not reverted.
 
 ### Anywhere else
 

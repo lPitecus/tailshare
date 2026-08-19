@@ -573,9 +573,23 @@ Com o repositório público, o clone por SSH deixou de ser necessário: o
 `git+https`, o que foi verificado com um `makepkg` completo (clona, compila,
 11/11 testes, gera `tailshare-git 0.1.0.r30.48771c9-1`).
 
-**Falta:** marcar a `v0.1.0` e escrever o `packaging/PKGBUILD` de release, que
-só pode existir depois da tag — o `sha256sum` é do tarball que o GitHub gera a
-partir dela. O AUR ficou fora de escopo por ora.
+A tag anotada **`v0.1.0`** foi criada sobre `1907d1d` e empurrada, e sobre ela
+nasceu o `packaging/PKGBUILD` de release (`tailshare 0.1.0-1`), com o tarball do
+GitHub e `sha256sum` de verdade no lugar do `SKIP`. Verificado: `makepkg`
+valida o checksum, compila, roda os 11 testes e gera um pacote com os mesmos
+quatro arquivos do `-git`.
+
+**Achado ao montar os dois:** eles compartilham o `$srcdir`, então alternar
+entre um e outro deixava o cache do CMake apontando para a fonte do outro
+(*"does not match the source used to generate cache"*). Cada um passou a usar
+`-B "$pkgname-build"`, e a alternância foi testada nos dois sentidos.
+
+O AUR ficou fora de escopo por ora — o repositório público com os dois
+`PKGBUILD` já permite que qualquer um construa.
+
+**Falta:** decidir se vale criar a página de *release* no GitHub. Ela não é
+necessária: o tarball que o `PKGBUILD` usa vem de `archive/refs/tags/`, que a
+tag sozinha já serve.
 
 ---
 

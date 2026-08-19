@@ -7,6 +7,8 @@
 
 #include <KZip>
 
+#include <QDir>
+#include <QDirIterator>
 #include <QFileInfo>
 #include <QSet>
 
@@ -49,6 +51,41 @@ QString uniqueEntryName(const QFileInfo &info, QSet<QString> &taken)
 bool isCanceled(const CancelFlag &cancel)
 {
     return cancel && cancel->load();
+}
+
+/**
+ * Adds the dangling symbolic links under @p path, which KZip leaves out.
+ *
+ * addLocalDirectory() walks the tree itself and skips any link whose target
+ * does not exist — and still returns true, so the link would disappear from the
+ * archive without a word (measured here; see PLAN.md section 3.10). The target
+ * is written exactly as it was read, so a relative link stays relative and
+ * points at the same place once extracted.
+ */
+bool addDanglingSymLinks(KZip &zip, const QString &path, const QString &entryName, const CancelFlag &cancel, Archiver::Result &result)
+{
+    const QDir root(path);
+    // System is what makes Qt list a link that points nowhere.
+    QDirIterator walk(path, QDir::AllEntries | QDir::Hidden | QDir::System | QDir::NoDotAndDotDot, QDirIterator::Subdirectories);
+
+    while (walk.hasNext()) {
+        const QFileInfo info(walk.next());
+        // exists() follows the link, so this pair is exactly "points nowhere".
+        if (!info.isSymLink() || info.exists()) {
+            continue;
+        }
+        if (isCanceled(cancel)) {
+            result.canceled = true;
+            return false;
+        }
+
+        const QString name = entryName + QLatin1Char('/') + root.relativeFilePath(info.absoluteFilePath());
+        if (!zip.writeSymLink(name, info.readSymLink())) {
+            result.error = QStringLiteral("could not add the broken link %1: %2").arg(info.absoluteFilePath(), zip.errorString());
+            return false;
+        }
+    }
+    return true;
 }
 
 }
@@ -94,6 +131,10 @@ Archiver::Result Archiver::createZip(const QStringList &paths, const QString &ar
         }
 
         const bool added = info.isDir() ? zip.addLocalDirectory(path, entryName) : zip.addLocalFile(path, entryName);
+        if (added && info.isDir() && !addDanglingSymLinks(zip, path, entryName, cancel, result)) {
+            zip.close();
+            return result;
+        }
         if (!added) {
             const QString reason = zip.errorString();
             zip.close();

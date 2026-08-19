@@ -33,6 +33,17 @@ private:
     }
 
 private Q_SLOTS:
+    /** No test inherits an override from whoever started ctest. */
+    void init()
+    {
+        qunsetenv("TAILSHARE_TAILSCALE");
+    }
+
+    void cleanup()
+    {
+        qunsetenv("TAILSHARE_TAILSCALE");
+    }
+
     void parsesTheOutputOfTheCommand()
     {
         const Status status = clientReading(QStringLiteral("running-tailnet.json")).fetchStatus();
@@ -40,6 +51,30 @@ private Q_SLOTS:
         QVERIFY(status.valid);
         QVERIFY(status.isRunning());
         QCOMPARE(status.devices.size(), 4);
+    }
+
+    void takesAnAbsoluteOverride()
+    {
+        qputenv("TAILSHARE_TAILSCALE", "/bin/cat");
+
+        QCOMPARE(TailscaleClient().program(), QStringLiteral("/bin/cat"));
+    }
+
+    /**
+     * A bare name would be resolved against the working directory of whoever
+     * loaded the plugin, which for Dolphin is a folder the user chose. Refuse
+     * it rather than run something out of there.
+     */
+    void refusesARelativeOverride()
+    {
+        qputenv("TAILSHARE_TAILSCALE", "tailscale");
+
+        TailscaleClient client;
+        QVERIFY(client.program().isEmpty());
+
+        const Status status = client.fetchStatus();
+        QVERIFY(!status.valid);
+        QVERIFY2(status.error.contains(QStringLiteral("absolute")), qPrintable(status.error));
     }
 
     void reportsMissingExecutable()

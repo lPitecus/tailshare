@@ -18,7 +18,11 @@ sharing disabled) are shown greyed out with the reason in the tooltip. Progress
 and results arrive as Plasma notifications.
 
 Taildrop cannot transfer directories, so a selection containing a folder is
-packed into a single ZIP before sending.
+packed into a single ZIP before sending. Symbolic links inside a folder travel
+as links, never as a copy of what they point at — including links that point
+nowhere, and links whose target lies outside the selection. A link you select
+*directly* is different: if it points at a folder, that folder's contents are
+what gets packed, which is what Dolphin showed you.
 
 ## Requirements
 
@@ -133,7 +137,10 @@ directories in it or Dolphin loses its icons and MIME database.
 
 `$TAILSHARE_TAILSCALE` overrides the `tailscale` executable, for an
 installation that keeps it outside `PATH` — and for testing the plugin against
-scripted output.
+scripted output. It must be an **absolute** path: a bare name would be resolved
+against the working directory of whatever loaded the plugin, which for Dolphin
+is a folder someone chose. Note this is a convenience, not a security boundary —
+`PATH` already decides which `tailscale` runs when the variable is unset.
 
 ## Translations
 

@@ -6,6 +6,7 @@
 #include "tailscaleclient.h"
 
 #include <QElapsedTimer>
+#include <QFileInfo>
 #include <QProcess>
 #include <QStandardPaths>
 
@@ -21,9 +22,15 @@ QString TailscaleClient::findExecutable()
     // An explicit path wins over the PATH lookup. It is what lets the tests
     // drive the plugin with a scripted tailnet, and it is the escape hatch for
     // an installation that keeps the binary somewhere unusual.
+    //
+    // It has to be absolute. A bare name would be resolved against the working
+    // directory of whichever process loaded the plugin — for Dolphin, whatever
+    // folder it happens to be sitting in — and running a binary picked up from
+    // there is never what this hatch is for. Note this is not a defence against
+    // a hostile environment: $PATH already decides which tailscale runs.
     const QString override = qEnvironmentVariable("TAILSHARE_TAILSCALE");
     if (!override.isEmpty()) {
-        return override;
+        return QFileInfo(override).isAbsolute() ? override : QString();
     }
 
     return QStandardPaths::findExecutable(QStringLiteral("tailscale"));
@@ -64,7 +71,8 @@ Status TailscaleClient::fetchStatus() const
     Status status;
 
     if (m_program.isEmpty()) {
-        status.error = QStringLiteral("tailscale was not found in PATH");
+        status.error = qEnvironmentVariableIsSet("TAILSHARE_TAILSCALE") ? QStringLiteral("$TAILSHARE_TAILSCALE must be an absolute path")
+                                                                        : QStringLiteral("tailscale was not found in PATH");
         return status;
     }
 

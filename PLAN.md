@@ -232,9 +232,11 @@ menu já não oferecer dispositivo que o Taildrop diz inalcançável.
 | Execução de processo **não passa por shell** | `QProcess::setProgram()` + `setArguments()` (lista), em `tailscaleclient.cpp:78` e `sendjob.cpp:191`; nenhum `system()`, `popen()` ou `start()` com string única no projeto | Injeção de comando por nome de arquivo não se aplica. O `--` de `commandArguments()` ainda protege contra arquivo chamado `-v` |
 | Temporários vão para `$XDG_RUNTIME_DIR` | `workDirTemplate()` em `sendjob.cpp:32`, com `QTemporaryDir` (0700, sufixo aleatório) e queda para `/tmp` só se aquele não servir | Uma transferência interrompida não deixa cópia dos arquivos do usuário em `/tmp` legível por todos |
 | **Sem *zip slip***: nomes de entrada são relativos | ZIP capturado de uma pasta real e inspecionado: todas as entradas sob `Pasta/`, nenhuma com `../` ou caminho absoluto | Extrair no dispositivo que recebe não escreve fora do destino |
-| **Symlink é guardado como symlink, nunca seguido** | pasta montada com link válido para fora da seleção (`../segredo/chave.txt`) e link absoluto (`/etc/hostname`): as entradas no ZIP têm 20 e 13 bytes — o *caminho*, não o conteúdo | Enviar uma pasta **não** exfiltra arquivo de fora da seleção |
-| ⚠️ **Symlink quebrado é descartado em silêncio** | o `link-quebrado.txt` estava na pasta e não apareceu no ZIP, sem aviso nenhum | Perda de dado sem avisar. Não é segurança, é correção — item em aberto |
-| ⚠️ `$TAILSHARE_TAILSCALE` faz o plugin executar **qualquer binário** dentro do Dolphin | `TailscaleClient::findExecutable()`, `tailscaleclient.cpp:24` | Quem escreve no seu ambiente já executa código como você, então não há ganho de privilégio — mas num binário publicado é uma armadilha silenciosa. Decisão em aberto |
+| **Symlink *dentro* da pasta é guardado como symlink, nunca seguido** | pasta montada com link válido para fora da seleção (`../segredo/chave.txt`) e link absoluto (`/etc/hostname`): as entradas no ZIP têm 20 e 13 bytes — o *caminho*, não o conteúdo | Enviar uma pasta **não** exfiltra arquivo de fora dela |
+| ⚠️ Mas symlink **de diretório selecionado direto** é dereferenciado | ressalva ao item acima: um `link-para-pasta` na seleção trouxe o conteúdo real do alvo para dentro do ZIP. É o comportamento documentado do `KArchive::addLocalDirectory` (*"the symbolic link will be dereferenced"*, `karchive.h:145`) | Não é falha: o usuário selecionou aquele item e o Dolphin o mostra como pasta. Mas a frase anterior, sozinha, estava larga demais — está no README agora, com a distinção |
+| ~~**Symlink quebrado descartado em silêncio**~~ **corrigido** | o `link-quebrado.txt` estava na pasta e não aparecia no ZIP; o `addLocalDirectory` o pula e **ainda assim devolve `true`** | O `Archiver` passou a varrer a pasta e reinserir cada link pendente com `KZip::writeSymLink`, usando `QFileInfo::readSymLink()` para manter o alvo **como escrito** (link relativo continua relativo). Coberto por `archivertest keepsLinksThatPointNowhere`, que foi visto falhando sem a correção (2 entradas em vez de 3) |
+| ~~`$TAILSHARE_TAILSCALE` como suposta brecha~~ **não era** | `findExecutable()` cai em `QStandardPaths::findExecutable("tailscale")`, que segue o `PATH` | Quem controla o ambiente já escolhe qual `tailscale` roda, com ou sem a variável: endurecê-la não daria segurança nenhuma. O que **foi** corrigido é outra coisa — ver abaixo |
+| Nome **relativo** na variável seria resolvido contra o diretório de trabalho | `QFileInfo(override).isAbsolute()` não era checado; o processo que carrega o plugin é o Dolphin, cujo diretório de trabalho é uma pasta escolhida por alguém | Passou a exigir caminho absoluto, com mensagem própria (`$TAILSHARE_TAILSCALE must be an absolute path`) em vez do enganoso *"not found in PATH"*. Dois casos novos no `tailscaleclienttest`, e um `init()`/`cleanup()` que impede qualquer teste de herdar a variável de quem chamou o `ctest` |
 | `clang-analyzer`, `bugprone`, `cert` e `concurrency` acham 3 avisos, **nenhum de segurança** | `clang-tidy` sobre `src/`: um no arquivo gerado pelo moc, um `bugprone-narrowing-conversions` em `itemCount()` (`qsizetype`→`int`, exigiria seleção de 2 bilhões de arquivos) e um `bugprone-branch-clone` no `switch` do `cancel()` | Nenhum vira correção urgente; os dois últimos são qualidade |
 | `cppcheck --enable=all` acha 12, **nenhum de segurança** | todos `returnByReference` e `shadowFunction` | O conselho de devolver `QString` por referência **não vale** para Qt: `QString` é implicitamente compartilhada, devolver por valor é barato e é o idioma |
 | Suíte **limpa sob ASan e UBSan** | `ECM_ENABLE_SANITIZERS='address;undefined'` e `ctest`: 11/11 passam, zero erro de endereço ou de comportamento indefinido | Nenhum acesso inválido nem comportamento indefinido nos caminhos que os testes cobrem |
@@ -549,10 +551,11 @@ por análise de símbolos e confirmadas em parte pelo `cppcheck`; `clang-tidy`,
 achado" de cada ferramenta foi provado com isca (3.9). **Vulnerabilidades: as cinco
 verificações rodaram** (3.10) — `gitleaks` no histórico, `clang-tidy` de
 segurança, `cppcheck --enable=all`, a suíte sob ASan/UBSan e a revisão manual da
-superfície de ataque. **Nenhuma vulnerabilidade encontrada.** Restam quatro
-decisões do dono, listadas em 3.10: nomes reais de dispositivo no repositório,
-qual e-mail é o do projeto, o symlink quebrado descartado em silêncio e o
-`$TAILSHARE_TAILSCALE`.
+superfície de ataque. **Nenhuma vulnerabilidade encontrada.** Das quatro decisões que
+sobraram, três estão fechadas: o e-mail do pacote passou a ser o mesmo dos
+commits, o symlink quebrado deixou de sumir e a variável de ambiente passou a
+exigir caminho absoluto. **Falta** decidir sobre os nomes reais de dispositivo
+que estão no `PLAN.md` e na fixture `peer-offline.json`.
 **Pronto quando:** as ferramentas rodam limpas ou cada aviso restante tem uma
 linha dizendo por que fica.
 

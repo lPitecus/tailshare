@@ -34,6 +34,19 @@ private:
         QCOMPARE(file.write(content), content.size());
     }
 
+    /** The link target stored for @p entry, empty when it is not a symlink. */
+    static QString linkTargetOf(const QString &archivePath, const QString &entry)
+    {
+        KZip zip(archivePath);
+        if (!zip.open(QIODevice::ReadOnly)) {
+            return QString();
+        }
+        const KArchiveEntry *found = zip.directory()->entry(entry);
+        const QString target = found && found->isFile() ? found->symLinkTarget() : QString();
+        zip.close();
+        return target;
+    }
+
     /** Every entry of the archive, as "relative/path" strings. */
     static QStringList entriesOf(const QString &archivePath)
     {
@@ -83,6 +96,33 @@ private Q_SLOTS:
         QVERIFY(!result.canceled);
         QVERIFY(QFile::exists(archive));
         QCOMPARE(entriesOf(archive), QStringList({QStringLiteral("Fotos/praia.jpg"), QStringLiteral("Fotos/sub/interna.jpg"), QStringLiteral("notes.txt")}));
+    }
+
+    /**
+     * A link that points nowhere still belongs in the archive.
+     *
+     * KZip's addLocalDirectory() skips it and reports success anyway, so
+     * without help the file would vanish from the transfer in silence.
+     */
+    void keepsLinksThatPointNowhere()
+    {
+        const QString folder = path(QStringLiteral("Links"));
+        QVERIFY(QDir(m_dir.path()).mkpath(folder));
+        makeFile(QStringLiteral("Links/real.txt"));
+        // Relative and dangling: the one addLocalDirectory() drops.
+        QVERIFY(QFile::link(QStringLiteral("nowhere.txt"), folder + QStringLiteral("/broken.txt")));
+        // Relative and valid: the one it already stores, kept as a control.
+        QVERIFY(QFile::link(QStringLiteral("real.txt"), folder + QStringLiteral("/valid.txt")));
+
+        const QString archive = path(QStringLiteral("links.zip"));
+        const auto result = Archiver::createZip({folder}, archive);
+
+        QVERIFY2(result.ok, qPrintable(result.error));
+        QCOMPARE(entriesOf(archive),
+                 QStringList({QStringLiteral("Links/broken.txt"), QStringLiteral("Links/real.txt"), QStringLiteral("Links/valid.txt")}));
+        // Stored as written, so it still points at the same place once unpacked.
+        QCOMPARE(linkTargetOf(archive, QStringLiteral("Links/broken.txt")), QStringLiteral("nowhere.txt"));
+        QCOMPARE(linkTargetOf(archive, QStringLiteral("Links/valid.txt")), QStringLiteral("real.txt"));
     }
 
     void keepsFileContents()

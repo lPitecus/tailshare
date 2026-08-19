@@ -4,10 +4,11 @@ A KDE Plasma plugin that adds a **Share via Tailscale** submenu to Dolphin's
 context menu, listing the tailnet devices that can receive files and sending
 them over [Taildrop](https://tailscale.com/kb/1106/taildrop).
 
-> **Status: early development, but it works.** The submenu, the transfer and
-> the notifications have been exercised in a real Dolphin session, the
-> interface is available in English and Brazilian Portuguese, and there is an
-> Arch package. See [PLAN.md](PLAN.md) for what is verified and what is not.
+> **Status: it works, and it has been used.** Every case of the QA script has
+> been exercised in a real Dolphin session with the package installed — see
+> *[What has been checked by hand](#what-has-been-checked-by-hand)* below. The
+> interface speaks English and Brazilian Portuguese. See [PLAN.md](PLAN.md) for
+> what is verified, what is covered by tests only, and what is neither.
 
 ## How it works
 
@@ -209,6 +210,8 @@ a live tailnet of five devices, two of them offline.
 | Cancelling from the notification | The transfer stops and the cancellation is notified |
 | Closing the window during a transfer | Dolphin warns that a transfer is still running before it closes |
 | A selection that is not local | No submenu at all, checked by browsing into a ZIP with `zip:/…` |
+| Tailscale stopped (`tailscale down`) | The submenu disappears entirely, and the context menu still opens at once |
+| Tailscale logged out | The submenu disappears too — a different backend state, checked separately |
 | The tailnet dropping mid-transfer | Nothing fails: `tailscale file cp` blocks while the backend is down and resumes when it comes back. Measured with 300 MB and a 15 second outage — the transfer finished normally, 31.5 s in total. The notification sits on *Sending* meanwhile, which is why the send has no timeout: a dropped network and a slow transfer look identical, and the dropped one recovers |
 
 Two cases in the plan cannot be observed on this tailnet, because it has no

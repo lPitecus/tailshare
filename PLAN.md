@@ -471,7 +471,7 @@ o `makepkg -si` foi rodado pelo usuário; o resto foi observado nesta sessão):
 
 Nenhum passo dependeu de `kbuildsycoca6`, como 3.3 previa.
 
-### Fase 5 — QA manual (em andamento)
+### ✅ Fase 5 — QA manual (concluída, `1ee48e1` … `f6773af`)
 Os onze casos do roteiro foram percorridos no Dolphin com o pacote instalado, e
 estão na tabela *What has been checked by hand* do README: arquivo único, vários
 arquivos, nome com espaço e acento, pasta, pasta de 400 MB (a janela continua
@@ -489,11 +489,13 @@ cobertos apenas por teste automatizado, e o README diz isso em vez de deixar
 parecer verificado.
 
 A fixture `needs-login.json` foi refeita a partir de um `tailscale logout` real
-e também estava errada (3.8) — duas de duas.
+e também estava errada (3.8) — duas de duas. E o estado `NeedsLogin`, que nunca
+tinha sido visto no Dolphin real (a Fase 3 observou `Stopped`), foi conferido
+com a sessão deslogada: **o item não aparece no menu**, nem cinza.
 
-**Falta:** olhar o menu do Dolphin com a sessão deslogada. A Fase 3 observou o
-submenu sumindo com `tailscale down` (`Stopped`); `NeedsLogin` é outro estado e
-nunca foi visto no Dolphin real.
+**Pronto:** os onze casos do roteiro têm comportamento observado e documentado
+na tabela do README, com as duas exceções nomeadas ali como cobertas apenas por
+teste.
 
 Roteiro fechado: arquivo único, múltiplos arquivos, pasta, pasta grande, nome com
 espaços e acentos, peer offline, peer sem Taildrop, tailnet só com self,

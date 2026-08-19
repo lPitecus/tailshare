@@ -641,6 +641,11 @@ o CI instala `glibc-locales`, confere que o `en_US.UTF-8` existe e **reprova se
 o `i18ntest` se pular** — senão a suíte ficaria verde com a tradução sem
 verificação nenhuma.
 
+Com isso o CI ficou **verde** (`32312760617`): build e testes em 1m26, os
+sanitizers em 1m19. O `actions/checkout` foi para a v5 porque a v4 saiu com
+aviso de Node.js 20 depreciado. O job `package` **ainda não rodou**: ele só
+dispara em tag, e a única tag existente é anterior ao workflow.
+
 ---
 
 ## 7. Dependências

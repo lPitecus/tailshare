@@ -33,7 +33,7 @@ jobs:
           locale -a | grep -qi 'en_US.utf8' || { echo "no en_US.UTF-8 after installing glibc-locales"; exit 1; }
           echo "LANG=en_US.UTF-8" >> "$GITHUB_ENV"
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Configure
         run: cmake -B build -DCMAKE_BUILD_TYPE=RelWithDebInfo
@@ -70,7 +70,7 @@ jobs:
           locale -a | grep -qi 'en_US.utf8' || { echo "no en_US.UTF-8 after installing glibc-locales"; exit 1; }
           echo "LANG=en_US.UTF-8" >> "$GITHUB_ENV"
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Configure with the sanitizers on
         run: cmake -B build-asan -DCMAKE_BUILD_TYPE=Debug -DECM_ENABLE_SANITIZERS='address;undefined'
@@ -93,7 +93,7 @@ jobs:
       - name: Install the build tooling
         run: pacman -Syu --noconfirm --needed git cmake extra-cmake-modules sudo
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       # makepkg refuses to run as root, and the container is root.
       - name: Make a user for makepkg

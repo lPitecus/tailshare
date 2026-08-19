@@ -622,8 +622,24 @@ abandonar o semver. O que foi entregue:
   regra do `0.x`, `pkgrel` para mudança só de empacotamento, e o `CHANGELOG`
   atualizado no mesmo commit do código.
 
-**Falta:** ver o CI passar de verdade. Um workflow que nunca rodou é suposição,
-não verificação.
+**A primeira execução do CI falhou, e valeu por isso.** O `i18ntest` reprovou
+seis comparações no contêiner, todas devolvendo o texto em inglês, embora o
+`shipsTheBrazilianCatalog` tenha passado — ou seja, o `.mo` era encontrado e a
+tradução não era aplicada. A causa foi reproduzida aqui em vez de adivinhada:
+
+| locale | falhas do `i18ntest` |
+|---|---|
+| `C`, `C.UTF-8`, `POSIX` | 6 |
+| `en_US.UTF-8`, `pt_BR.UTF-8` | 0 |
+
+O gettext da glibc devolve a string original sob locale C, **por mais completo
+que o catálogo esteja** — e um contêiner Arch não traz locale nenhum gerado.
+Não é defeito do código: num Plasma real sempre há locale. As duas correções:
+o `i18ntest` passou a dar `QSKIP` com a explicação quando o `LC_MESSAGES` é
+`C`/`POSIX`, em vez de reprovar seis comparações que parecem bug de tradução; e
+o CI instala `glibc-locales`, confere que o `en_US.UTF-8` existe e **reprova se
+o `i18ntest` se pular** — senão a suíte ficaria verde com a tradução sem
+verificação nenhuma.
 
 ---
 

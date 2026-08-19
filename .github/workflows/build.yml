@@ -22,7 +22,16 @@ jobs:
       - name: Install the dependencies from the README
         run: |
           pacman -Syu --noconfirm --needed git cmake extra-cmake-modules gettext \
-            qt6-base kcoreaddons kio ki18n knotifications karchive kwidgetsaddons
+            glibc-locales qt6-base kcoreaddons kio ki18n knotifications karchive kwidgetsaddons
+
+      # glibc's gettext returns the original string under C, C.UTF-8 and POSIX
+      # alike, so i18ntest needs a real locale to exist. The container has none
+      # by default. Checked rather than assumed: without this the test would
+      # skip itself and the translations would go unverified in silence.
+      - name: Make a usable locale
+        run: |
+          locale -a | grep -qi 'en_US.utf8' || { echo "no en_US.UTF-8 after installing glibc-locales"; exit 1; }
+          echo "LANG=en_US.UTF-8" >> "$GITHUB_ENV"
 
       - uses: actions/checkout@v4
 
@@ -35,6 +44,13 @@ jobs:
       - name: Test
         run: ctest --test-dir build --output-on-failure
 
+      # A green suite where i18ntest skipped itself would mean the translations
+      # went unchecked. Fail instead of passing quietly.
+      - name: Make sure the translations were really checked
+        run: |
+          ./build/bin/i18ntest | tee i18n.log
+          grep -q '0 skipped' i18n.log || { echo "i18ntest skipped itself: no usable locale in this job"; exit 1; }
+
   sanitizers:
     name: address and undefined behaviour
     runs-on: ubuntu-latest
@@ -43,7 +59,16 @@ jobs:
       - name: Install the dependencies from the README
         run: |
           pacman -Syu --noconfirm --needed git cmake extra-cmake-modules gettext \
-            qt6-base kcoreaddons kio ki18n knotifications karchive kwidgetsaddons
+            glibc-locales qt6-base kcoreaddons kio ki18n knotifications karchive kwidgetsaddons
+
+      # glibc's gettext returns the original string under C, C.UTF-8 and POSIX
+      # alike, so i18ntest needs a real locale to exist. The container has none
+      # by default. Checked rather than assumed: without this the test would
+      # skip itself and the translations would go unverified in silence.
+      - name: Make a usable locale
+        run: |
+          locale -a | grep -qi 'en_US.utf8' || { echo "no en_US.UTF-8 after installing glibc-locales"; exit 1; }
+          echo "LANG=en_US.UTF-8" >> "$GITHUB_ENV"
 
       - uses: actions/checkout@v4
 

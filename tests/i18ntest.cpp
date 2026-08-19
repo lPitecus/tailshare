@@ -3,6 +3,8 @@
     SPDX-License-Identifier: GPL-2.0-or-later
 */
 
+#include <clocale>
+
 #include <QDir>
 #include <QFile>
 #include <QSignalSpy>
@@ -67,6 +69,16 @@ private:
 private Q_SLOTS:
     void initTestCase()
     {
+        // glibc's gettext hands back the original string under the C locale,
+        // whatever the catalog says — measured here for C, C.UTF-8 and POSIX
+        // alike. A bare container has nothing else installed, so say that
+        // plainly instead of failing six comparisons that look like a
+        // translation bug.
+        const QByteArray messages(setlocale(LC_MESSAGES, nullptr));
+        if (messages.isEmpty() || messages == "C" || messages == "C.UTF-8" || messages == "POSIX") {
+            QSKIP("no usable locale is installed, and gettext does not translate under C or POSIX");
+        }
+
         // The catalogs live in the build tree, not in XDG_DATA_DIRS yet.
         KLocalizedString::addDomainLocaleDir(QByteArrayLiteral("tailshare"), QStringLiteral(BUILD_LOCALE_DIR));
         KLocalizedString::setLanguages({QStringLiteral("pt_BR")});

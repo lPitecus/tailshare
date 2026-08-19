@@ -216,6 +216,9 @@ menu já não oferecer dispositivo que o Taildrop diz inalcançável.
 | O `cppcheck --enable=unusedFunction` acha **3 das 4** | rodado sobre `src/ tools/ tests/` com `--library=qt` no código anterior à remoção: acusou `activeJobs`, `delay` e `setDelay`, e não `SendJob::program()` | Confirmação independente da análise por símbolos, mas incompleta |
 | **Por que ele perdeu a quarta:** o `unusedFunction` casa a função pelo **nome simples**, sem a classe | experimento com duas iscas em `SendJob`: `program()` (nome que colide com `TailscaleClient::program()`, viva) e `programUniqueName()` (nome inédito). Só a segunda foi acusada | Ponto cego sério em código Qt, cheio de getters homônimos entre classes (`program()`, `timeout()`, `name()`). O cppcheck **não substitui** a análise por símbolos aqui; os dois se complementam |
 | O `cppcheck` acusa todos os *slots* de teste como não usados | 83 avisos, todos em `tests/` | Falso positivo conhecido: quem chama os slots do `QTest` é o moc, em tempo de execução. Ruído a filtrar, não achado |
+| O `clazy` (analisador específico de Qt) não acha **nada**, nos níveis 0, 1 e 2 | `clazy-standalone -p build-clang --checks=level0,level1,level2` sobre os 13 `.cpp` de `src/` | Zero avisos — e o zero é confiável porque foi provado com isca (abaixo) |
+| A isca prova que as ferramentas estão de fato analisando | um laço `for (const QString name : names)` inserido de propósito em `devices.cpp` foi acusado como `-Wclazy-range-loop-reference`; a isca foi removida em seguida | Toda vez que uma ferramenta devolve "nenhum achado", vale conferir se ela está ligada. Aqui está |
+| Código morto **de escopo de arquivo** o compilador já pega sozinho | a mesma isca, sendo `static`, saiu como `-Wunused-function` | Explica por que o `nm` só era necessário para função de ligação externa: o que é `static` nunca chegaria a passar despercebido |
 | `misc-include-cleaner` não achou nenhum *include* sobrando | 61 avisos, **todos** do tipo "não incluído diretamente" (estilo IWYU) | Nada a remover; adotar IWYU seria mudança de estilo, não limpeza de código morto |
 
 ## 4. Arquitetura
@@ -521,8 +524,10 @@ e sem login, para corrigir as fixtures `stopped.json` e `needs-login.json` (3.4)
 ### Fase 6 — Verificações antes da publicação (em andamento)
 Pedida antes de tornar o repositório público: varredura de código morto e de
 vulnerabilidades. **Código morto: feito** — quatro funções removidas, achadas
-por análise de símbolos e confirmadas em parte pelo `cppcheck` (3.9). O `clazy`
-e a verificação de vulnerabilidades seguem pendentes.
+por análise de símbolos e confirmadas em parte pelo `cppcheck`; `clang-tidy`,
+`clazy` (níveis 0 a 2) e os dois compiladores rodam sem um aviso, e o "nenhum
+achado" de cada ferramenta foi provado com isca (3.9). **Falta** a verificação
+de vulnerabilidades.
 **Pronto quando:** as ferramentas rodam limpas ou cada aviso restante tem uma
 linha dizendo por que fica.
 

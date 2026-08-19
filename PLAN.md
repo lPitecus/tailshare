@@ -419,7 +419,7 @@ pode quebrar em outra, e o plano B (aceitar o cancelamento e notificar) segue
 valendo. A prova dos cinco formatos de seleção é a do `plugintest`; o que se
 observou no Dolphin foi o submenu aparecendo em uso normal.
 
-### Fase 4 — i18n e empacotamento (implementada, falta a prova do pacote)
+### ✅ Fase 4 — i18n e empacotamento (concluída, `e518a3c` + `af175e4`)
 Entregue: `Messages.sh` (extração com o conjunto de keywords do KDE, 22
 mensagens), `po/pt_BR/tailshare.po` completo, `ki18n_install(po)` no CMake com o
 espelho para `build/share/locale` (3.7), `Name[pt_BR]`/`Description[pt_BR]` no
@@ -436,15 +436,22 @@ acabou de compilar; `translationstest` roda o `Messages.sh` num diretório
 temporário e reprova, via `msgcmp` e `msgfmt --check`, qualquer catálogo de
 `po/` que tenha ficado para trás do código.
 
-**Verificado:** `ctest` 100% (11 testes) com `LANG=en_US` **e** com
-`LANG=pt_BR`; a UI sai em pt-BR a partir do build tree, sem instalar nada
-(3.7); `makepkg` nesta máquina clona, compila, roda a suíte no `check()` e gera
-`tailshare-git-0.1.0.r13.e518a3c-1-x86_64.pkg.tar.zst` com exatamente quatro
-arquivos — o `.so` em `usr/lib/qt6/plugins/kf6/kfileitemaction/`, o
-`tailshare.mo` em `usr/share/locale/pt_BR/LC_MESSAGES/`, o `.notifyrc` em
-`usr/share/knotifications6/` e a licença.
-**Falta:** o `pacman -U` em si e o Dolphin reiniciado sobre o pacote instalado.
-Aqui o `sudo` pede senha, então esse passo é do usuário.
+**Verificado por teste automatizado:** `ctest` 100% (11 testes) com
+`LANG=en_US` **e** com `LANG=pt_BR`.
+
+**QA manual sobre o pacote instalado** (o `sudo` desta máquina pede senha, então
+o `makepkg -si` foi rodado pelo usuário; o resto foi observado nesta sessão):
+
+| Caso | Observado |
+|---|---|
+| `makepkg -si` a partir do `packaging/` | clona por SSH, compila, roda a suíte no `check()` e instala `tailshare-git 0.1.0.r14.af175e4-1` |
+| Conteúdo do pacote (`pacman -Ql`) | exatamente quatro arquivos: o `.so` em `/usr/lib/qt6/plugins/kf6/kfileitemaction/`, o `tailshare.mo` em `/usr/share/locale/pt_BR/LC_MESSAGES/`, o `.notifyrc` em `/usr/share/knotifications6/` e a licença |
+| Dolphin reiniciado **sem** variável de ambiente nenhuma | o submenu aparece, vindo de `/usr`; envio e notificações funcionam |
+| Catálogo instalado é encontrado sem apontar para o build tree | `env -u XDG_DATA_DIRS LANGUAGE=pt_BR ./build/bin/tailshare-probe --list` devolve *"Este dispositivo está offline."*, e `LANGUAGE=en` devolve o original |
+| `LANGUAGE=pt_BR dolphin` | o item do menu lê **Compartilhar pelo Tailscale** e o tooltip do dispositivo cinza lê **Este dispositivo está offline.** |
+| Nome e descrição em *Configurar o Dolphin → Menu de contexto* | em pt-BR, vindos do JSON (caminho de tradução diferente do catálogo — ver 3.7) |
+
+Nenhum passo dependeu de `kbuildsycoca6`, como 3.3 previa.
 
 ### Fase 5 — QA manual
 Roteiro fechado: arquivo único, múltiplos arquivos, pasta, pasta grande, nome com

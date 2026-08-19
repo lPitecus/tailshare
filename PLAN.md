@@ -469,13 +469,23 @@ o `makepkg -si` foi rodado pelo usuário; o resto foi observado nesta sessão):
 Nenhum passo dependeu de `kbuildsycoca6`, como 3.3 previa.
 
 ### Fase 5 — QA manual (em andamento)
-Feito até aqui: fixture `stopped.json` refeita a partir de um `tailscale down`
-real (3.8), e os seis primeiros casos do roteiro observados no Dolphin com o
-pacote instalado — arquivo único, vários arquivos, nome com espaço e acento,
-pasta, pasta de 400 MB e seleção mista. Os dois pontos que só o caso grande
-prova ficaram confirmados pelo usuário: a notificação *Compactando* aparece
-antes da de envio, e a janela do Dolphin continua respondendo enquanto o ZIP é
-escrito. Já estão na tabela do README.
+Os onze casos do roteiro foram percorridos no Dolphin com o pacote instalado, e
+estão na tabela *What has been checked by hand* do README: arquivo único, vários
+arquivos, nome com espaço e acento, pasta, pasta de 400 MB (a janela continua
+respondendo enquanto o ZIP é escrito), seleção mista, dispositivo cinza com
+motivo no tooltip, cancelamento pela notificação, aviso ao fechar a janela
+durante a transferência, e seleção não-local (via `zip:`) sem submenu nenhum.
+
+O caso da queda de rede no meio do envio rendeu o achado de 3.8 e mudou a tabela
+de riscos da seção 8. A fixture `stopped.json` foi refeita a partir de um
+`tailscale down` real (3.8).
+
+Dois casos **não** puderam ser observados nesta tailnet, por falta de
+dispositivo com Taildrop desabilitado e de uma tailnet só com o self: seguem
+cobertos apenas por teste automatizado, e o README diz isso em vez de deixar
+parecer verificado.
+
+**Falta:** a fixture `needs-login.json`, que exige um `tailscale logout` real.
 
 Roteiro fechado: arquivo único, múltiplos arquivos, pasta, pasta grande, nome com
 espaços e acentos, peer offline, peer sem Taildrop, tailnet só com self,

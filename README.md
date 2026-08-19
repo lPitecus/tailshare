@@ -205,6 +205,10 @@ a live tailnet of five devices, two of them offline.
 | A folder | *Compressing* notification, then *Sending*: the folder is zipped first |
 | A 400 MB folder | Compressed and sent; Dolphin's window stays responsive throughout — the list scrolls and the window resizes while the ZIP is being written |
 | A file and a folder together | Packed into a single ZIP and sent |
+| A device that cannot receive | Greyed out in the submenu, with the reason in its tooltip — *"This device is offline."* |
+| Cancelling from the notification | The transfer stops and the cancellation is notified |
+| Closing the window during a transfer | Dolphin warns that a transfer is still running before it closes |
+| A selection that is not local | No submenu at all, checked by browsing into a ZIP with `zip:/…` |
 | The tailnet dropping mid-transfer | Nothing fails: `tailscale file cp` blocks while the backend is down and resumes when it comes back. Measured with 300 MB and a 15 second outage — the transfer finished normally, 31.5 s in total. The notification sits on *Sending* meanwhile, which is why the send has no timeout: a dropped network and a slow transfer look identical, and the dropped one recovers |
 
 Two cases in the plan cannot be observed on this tailnet, because it has no

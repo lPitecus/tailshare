@@ -467,7 +467,15 @@ o `makepkg -si` foi rodado pelo usuário; o resto foi observado nesta sessão):
 
 Nenhum passo dependeu de `kbuildsycoca6`, como 3.3 previa.
 
-### Fase 5 — QA manual
+### Fase 5 — QA manual (em andamento)
+Feito até aqui: fixture `stopped.json` refeita a partir de um `tailscale down`
+real (3.8), e os seis primeiros casos do roteiro observados no Dolphin com o
+pacote instalado — arquivo único, vários arquivos, nome com espaço e acento,
+pasta, pasta de 400 MB e seleção mista. Os dois pontos que só o caso grande
+prova ficaram confirmados pelo usuário: a notificação *Compactando* aparece
+antes da de envio, e a janela do Dolphin continua respondendo enquanto o ZIP é
+escrito. Já estão na tabela do README.
+
 Roteiro fechado: arquivo único, múltiplos arquivos, pasta, pasta grande, nome com
 espaços e acentos, peer offline, peer sem Taildrop, tailnet só com self,
 `tailscale down` no meio do envio, fechar o Dolphin durante o envio, seleção em

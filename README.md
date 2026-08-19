@@ -9,7 +9,7 @@ them over [Taildrop](https://tailscale.com/kb/1106/taildrop).
 > interface is available in English and Brazilian Portuguese, and there is an
 > Arch package. See [PLAN.md](PLAN.md) for what is verified and what is not.
 
-## How it will work
+## How it works
 
 Right-click one or more files in Dolphin, open **Share via Tailscale**, and pick
 a device. Devices that cannot receive files (offline, unsupported OS, file
@@ -170,8 +170,8 @@ suffix on the key, and both need the same treatment when a language is added.
 ## Development probe
 
 `tailshare-probe` is a command line tool built with the project and
-deliberately **not installed**. It drives the same send path the plugin will
-use, so a transfer can be tested before there is any menu:
+deliberately **not installed**. It drives the same send path the plugin
+uses, so a transfer can be tested without going through the menu:
 
 ```sh
 ./build/bin/tailshare-probe --list                      # tailnet devices
@@ -189,6 +189,28 @@ XDG_DATA_DIRS="$PWD/build/share:$XDG_DATA_DIRS" ./build/bin/tailshare-probe --no
 `Ctrl+C` cancels the transfer instead of killing the probe. `--program <path>`
 runs something else in place of `tailscale`, which is how the slow paths get
 exercised without a large transfer.
+
+## What has been checked by hand
+
+The test suite covers the logic, and `ctest` is the place to look for that. This
+table is the other half: what was observed clicking through a real Dolphin
+session — Plasma 6, Dolphin 26.04, the package installed from `packaging/`, and
+a live tailnet of five devices, two of them offline.
+
+| Case | Observed |
+|---|---|
+| One file | Sent, with no compression step |
+| Several files at once | Sent together, one notification: *"Sending 2 files to …"* |
+| Name with spaces and accents | `relatório final.txt` arrives with its name intact |
+| A folder | *Compressing* notification, then *Sending*: the folder is zipped first |
+| A 400 MB folder | Compressed and sent; Dolphin's window stays responsive throughout — the list scrolls and the window resizes while the ZIP is being written |
+| A file and a folder together | Packed into a single ZIP and sent |
+
+Two cases in the plan cannot be observed on this tailnet, because it has no
+device with Taildrop disabled and no tailnet consisting of the local machine
+alone: **a peer that cannot receive files** and **an empty tailnet**. Both are
+covered by `plugintest`, against captured status output — checked by test, not
+by hand, and listed here rather than left to look verified.
 
 ## Licence
 

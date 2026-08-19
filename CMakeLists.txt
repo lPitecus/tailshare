@@ -17,7 +17,11 @@ include(KDECompilerSettings NO_POLICY_SCOPE)
 include(ECMDeprecationSettings)
 include(FeatureSummary)
 
-find_package(Qt6 ${QT_MIN_VERSION} REQUIRED COMPONENTS Core)
+find_package(Qt6 ${QT_MIN_VERSION} REQUIRED COMPONENTS
+    Core
+    Concurrent  # compressing off the main thread
+    Gui         # pulled in by KF6::Notifications
+)
 find_package(KF6 ${KF_MIN_VERSION} REQUIRED COMPONENTS
     CoreAddons   # KPluginFactory
     KIO          # KAbstractFileItemActionPlugin
@@ -36,10 +40,24 @@ ecm_set_disabled_deprecation_versions(
     KF 6.28
 )
 
+option(BUILD_TOOLS "Build the development probe (never installed)" ON)
+
 add_subdirectory(src/core)
+add_subdirectory(src/send)
+add_subdirectory(src/notify)
+
+if(BUILD_TOOLS)
+    add_subdirectory(tools/tailshare-probe)
+endif()
 
 if(BUILD_TESTING)
     add_subdirectory(tests)
 endif()
+
+install(FILES data/tailshare.notifyrc DESTINATION ${KDE_INSTALL_KNOTIFYRCDIR})
+
+# The same file inside the build tree, so the probe can be run against it with
+# XDG_DATA_DIRS=<build>/share:$XDG_DATA_DIRS before anything is installed.
+configure_file(data/tailshare.notifyrc ${CMAKE_BINARY_DIR}/share/knotifications6/tailshare.notifyrc COPYONLY)
 
 feature_summary(WHAT ALL INCLUDE_QUIET_PACKAGES FATAL_ON_MISSING_REQUIRED_PACKAGES)

@@ -4,9 +4,11 @@ A KDE Plasma plugin that adds a **Share via Tailscale** submenu to Dolphin's
 context menu, listing the tailnet devices that can receive files and sending
 them over [Taildrop](https://tailscale.com/kb/1106/taildrop).
 
-> **Status: early development.** Nothing is usable yet — the repository
-> currently holds the execution plan ([PLAN.md](PLAN.md)) and the build
-> skeleton. See the phase list in the plan for what is being built next.
+> **Status: early development.** There is no Dolphin menu yet. What works is
+> the whole send path — reading the tailnet, planning the transfer, zipping
+> folders, running Taildrop and reporting through Plasma notifications — which
+> you can drive from the command line with the development probe described
+> below. See [PLAN.md](PLAN.md) for the phase list.
 
 ## How it will work
 
@@ -24,6 +26,14 @@ packed into a single ZIP before sending.
 
 - KDE Plasma 6 with Dolphin
 - `tailscale` 1.102 or newer in `PATH`, logged in and running
+- Permission to use Taildrop as your own user:
+
+  ```sh
+  sudo tailscale set --operator=$USER
+  ```
+
+  Without it `tailscale file cp` answers `Access denied: file access denied`,
+  and so does tailshare — the plugin runs as you, never as root.
 
 **Build**
 
@@ -77,6 +87,29 @@ under *Settings → Configure Dolphin → Context Menu*, or edit
 [Show]
 tailshareitemaction=false
 ```
+
+## Development probe
+
+`tailshare-probe` is a command line tool built with the project and
+deliberately **not installed**. It drives the same send path the plugin will
+use, so a transfer can be tested before there is any menu:
+
+```sh
+./build/bin/tailshare-probe --list                      # tailnet devices
+./build/bin/tailshare-probe --dry-run -d pixel-8 file   # show the argv, send nothing
+./build/bin/tailshare-probe -d pixel-8 ~/Pictures       # zip the folder and send it
+```
+
+Add `--notify` to also raise the Plasma notifications. Before installing, point
+the notification system at the build tree so it finds the event definitions:
+
+```sh
+XDG_DATA_DIRS="$PWD/build/share:$XDG_DATA_DIRS" ./build/bin/tailshare-probe --notify -d pixel-8 file
+```
+
+`Ctrl+C` cancels the transfer instead of killing the probe. `--program <path>`
+runs something else in place of `tailscale`, which is how the slow paths get
+exercised without a large transfer.
 
 ## Licence
 

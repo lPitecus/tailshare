@@ -4,8 +4,9 @@ Plugin nativo do KDE Plasma que adiciona um submenu **"Share via Tailscale"** ao
 menu de contexto do Dolphin, listando os dispositivos da tailnet aptos a receber
 arquivos e enviando via Taildrop (`tailscale file cp`).
 
-**Estado:** Fases 0 e 1 concluídas (`4efe033`). Próximo passo: Fase 2 — `SendJob`
-validado fora da UI pelo `tools/tailshare-probe`.
+**Estado:** Fases 0, 1 e 2 concluídas. O caminho de envio inteiro funciona e foi
+exercitado contra a tailnet real pelo `tools/tailshare-probe`; falta a interface.
+Próximo passo: Fase 3 — o plugin do menu de contexto do Dolphin.
 
 ---
 
@@ -133,6 +134,31 @@ então o fallback do KIO não se aplica; o casamento passa a depender de
 `db.mimeTypeForName("")` — que empiricamente retorna `inherits("application/octet-stream") == true`
 aqui, mas é comportamento do Qt em que prefiro não apostar sem testar no Dolphin real.
 
+### 3.5 Achados durante a implementação (Fase 2)
+
+Verificados ao escrever o caminho de envio, contra o tailscale v1.102.2, os
+headers do KF6 6.28 instalados e o barramento de notificações desta sessão do
+Plasma:
+
+| Fato | Como foi verificado | Consequência |
+|---|---|---|
+| `tailscale file cp` recusa o envio quando o usuário não é *operator*: `Access denied: file access denied` seguido de `To not require root, use 'sudo tailscale set --operator=$USER' once.` | `tailshare-probe` contra `home-tuzin` nesta máquina | Não é falha do plugin, é configuração do tailscaled — **virou pré-requisito de runtime no README**. Confirma também a decisão de repassar o stderr íntegro: a própria mensagem ensina a correção |
+| `KF6::Notifications` arrasta `Qt6::Gui` (`INTERFACE_LINK_LIBRARIES "Qt6::Gui;Qt6::DBus"`) | `/usr/lib/cmake/KF6Notifications/KF6NotificationsTargets.cmake:72` | O envio ficou em `tailshare_send`, sem UI, e a notificação em `tailshare_notify`. Testes e o modo padrão do probe rodam sem display |
+| `KNotificationAction` não tem header próprio: é declarado dentro de `knotification.h` | erro de compilação `KNotificationAction: No such file or directory`, depois `knotification.h:30` | `#include <KNotification>` basta |
+| Chamar `sendEvent()` duas vezes na mesma `KNotification` cria **dois** popups, não atualiza o primeiro | `dbus-monitor --session` em `org.freedesktop.Notifications`: a segunda chamada saiu com `replaces_id = 0` | Enviar uma vez só; depois disso os setters (`setTitle`, `setText`, `setIconName`) é que atualizam |
+| A atualização só sai **depois** que o servidor devolve o id, e é assíncrona | mesma medição: num job de 18 ms a ordem no barramento foi `Compressing` (novo) → `Send failed` (novo) → `Sending files` com `replaces_id=11` — o popup de progresso ressuscitou **depois** do resultado | O `SendNotifier` só levanta o progresso depois de **400 ms** de transferência. Remedido: job de 18 ms gera **um** `Notify` (o resultado); job de 3 s gera `Notify` de progresso, `CloseNotification` e `Notify` final, nessa ordem |
+| `$XDG_RUNTIME_DIR` existe e é usável aqui (`/run/user/1000`) | caminho do ZIP na mensagem de erro do tailscale: `/run/user/1000/tailshare-dhpCgT/pasta de teste.zip` | O ZIP temporário nunca passa por um `/tmp` compartilhado |
+| KArchive não expõe progresso nem interrupção — `addLocalDirectory()` é uma chamada só, que recursa sozinha | `karchive.h:138-153` | Cancelar só é percebido **entre** os itens de topo; está documentado na API do `Archiver`, e uma pasta enorme ainda termina antes de a flag ser vista |
+| Dois itens de mesmo nome em pastas diferentes colidiriam dentro do ZIP | teste `doesNotLoseItemsThatShareAName` | O `Archiver` renomeia o segundo para `notes-2.txt` em vez de perder um dos dois silenciosamente |
+| `QTimer` de 1000 ms disparou aos 950 ms medidos pelo `QElapsedTimer` do probe | `--program <script de 3 s> --timeout 1000` | Timeout é orçamento aproximado, não garantia; irrelevante aqui, mas não usar `QTimer` para medir prazo curto |
+
+**Correção à seção 8**: o `SendJob` aceita um timeout, mas ele vem **desligado**
+(`timeout() == 0`). Um envio legítimo de vários gigabytes e um envio pendurado
+num peer que caiu são indistinguíveis daqui, e matar o primeiro para pegar o
+segundo é o pior lado do trade. A saída é o `cancel()` — exposto como ação
+*Cancel* na notificação persistente e como Ctrl+C no probe — mais o fato de o
+menu já não oferecer dispositivo que o Taildrop diz inalcançável.
+
 ## 4. Arquitetura
 
 Um artefato instalável (o plugin) sobre uma lib de núcleo testável. O envio roda
@@ -142,10 +168,21 @@ Um artefato instalável (o plugin) sobre uma lib de núcleo testável. O envio r
 [Dolphin]
    └─ tailshareitemaction.so           (plugin KIO)
         ├─ actions()      → consulta síncrona ≤300 ms, monta o submenu
-        └─ SendJob (async) → ZIP (se houver pasta) → tailscale file cp → KNotification
-                                   │
-                                   └── usa libtailshare_core (estática, sem UI)
+        └─ SendJob (async) → ZIP (se houver pasta) → tailscale file cp
+                 │                                        │
+                 │                                        └── libtailshare_send
+                 └─ SendNotifier → KNotification              (sobre o core)
+                        └── libtailshare_notify
+
+[tailshare-probe]  (dev, não instalado)
+   └─ mesmo SendJob e mesmo SendNotifier, dirigidos pela linha de comando
 ```
+
+Três bibliotecas estáticas em vez de duas, decidido ao implementar: o probe
+precisa do `SendJob` sem carregar o plugin, e `KF6::Notifications` arrasta
+`Qt6::Gui` (3.5). Então `tailshare_core` (regras) ← `tailshare_send` (envio,
+sem UI) ← `tailshare_notify` (KNotification). O plugin e o probe linkam as três;
+os testes param na segunda e rodam headless.
 
 ### 4.1 `libtailshare_core` (estática, sem dependência de UI) — ✅ implementada
 
@@ -189,19 +226,41 @@ os dois são obrigatórios (ver 3.3). Sem `X-KDE-Show-In-Submenu`, para o item
 ficar no nível principal do menu. Como o KIO reusa a instância do plugin,
 `actions()` não guarda estado entre chamadas.
 
-### 4.3 `SendJob` — o envio, dentro do Dolphin
+### 4.3 `SendJob` — o envio, dentro do Dolphin — ✅ implementado
 
-Disparado pelo clique, `QObject` filho do plugin, 100% assíncrono. O menu fecha
-na hora e o Dolphin nunca bloqueia.
+Disparado pelo clique, `QObject` filho do plugin, 100% assíncrono: `start()`
+retorna na hora e todo o progresso sai por sinal. Estados: `Idle`,
+`Compressing`, `Sending`, `Succeeded`, `Failed`, `Canceled` — `finished(bool)`
+sai **uma vez só**, depois do último `stateChanged()`.
 
-1. Notificação persistente: *"Sending 3 files to pixel-8…"*.
-2. Se houver pasta na seleção: `KZip` → `$XDG_RUNTIME_DIR/tailshare-XXXX/<nome>.zip`,
-   feito **numa `QThread`** para não travar a interface do Dolphin. Notificação
-   passa a *"Compressing…"*. Falha (espaço, permissão) → notificação de erro e aborta.
-3. `tailscale file cp <arquivos> <dnsName>:` via `QProcess` assíncrono.
-4. Sucesso → *"Sent to pixel-8"*. Erro → notificação com o **stderr do tailscale**
-   (é a mensagem mais útil: sem permissão, peer inválido, etc.).
-5. `QTemporaryDir` limpa o ZIP sempre, inclusive em erro.
+1. Se houver pasta na seleção: `Archiver` grava `KZip` em
+   `$XDG_RUNTIME_DIR/tailshare-XXXXXX/<nome>.zip` **fora da thread principal**
+   (`QtConcurrent::run` + `QFutureWatcher`). Falha (espaço, permissão) → estado
+   `Failed` com o motivo.
+2. `tailscale file cp -- <arquivos> <dnsName>:` via `QProcess` assíncrono.
+3. Sucesso → `Succeeded`. Saída não-zero → `Failed` com o **stderr do tailscale**
+   íntegro (é a mensagem mais útil: sem permissão, peer inválido — ver 3.5).
+4. `QTemporaryDir` limpa o ZIP sempre, inclusive em erro e no cancelamento;
+   verificado no teste `removesTheTemporaryArchiveAfterwards`.
+5. `cancel()` levanta a flag do `Archiver` e, se já estiver enviando, manda
+   `terminate()` e mata 2 s depois. O job ainda assim termina por `finished()`.
+
+**Quem fala com o usuário é o `SendNotifier`** (4.4), não o `SendJob`: o job não
+conhece KNotification nem KI18n, o que é o que permite testá-lo headless e
+dirigi-lo pelo probe.
+
+### 4.4 `SendNotifier` e as mensagens
+
+`SendMessages` é o único lugar com as frases ("Compressing", "Sending %1 files
+to %2", "Sent %1 to %2", …), o ícone de tema por estado e o mapa estado →
+evento do `.notifyrc` (`sending`, `sent`, `error`). Notificação e probe dizem a
+mesma coisa e há um só conjunto de strings para traduzir na Fase 4.
+
+`SendNotifier` liga um `SendJob` a isso: uma notificação **persistente** com
+ação *Cancel* acompanha a transferência e é substituída no fim por uma
+efêmera de sucesso ou de erro. O progresso só aparece depois de **400 ms** de
+transferência — sem isso, um envio de 20 ms deixa um popup órfão na tela por
+causa do comportamento do KNotification medido em 3.5.
 
 **Fechar o Dolphin com envio em andamento.** Enquanto houver `SendJob` ativo, o
 plugin instala um event filter de `QEvent::Close` na janela de topo recebida em
@@ -224,15 +283,17 @@ tailshare/
 ├── PLAN.md
 ├── src/
 │   ├── core/                     # ✅ libtailshare_core (7 pares .h/.cpp)
-│   └── plugin/                   # tailshareitemaction.cpp, sendjob.cpp, .json
+│   ├── send/                     # ✅ libtailshare_send: archiver, sendjob, sendmessages
+│   ├── notify/                   # ✅ libtailshare_notify: sendnotifier
+│   └── plugin/                   # tailshareitemaction.cpp, .json  (Fase 3)
 ├── tools/
-│   └── tailshare-probe/          # binário de dev, NÃO instalado (ver Fase 2)
-├── tests/                        # ✅ 5 binários QTest + CMakeLists
+│   └── tailshare-probe/          # ✅ binário de dev, NÃO instalado
+├── tests/                        # ✅ 7 binários QTest + CMakeLists
 │   ├── fixtures/                 # ✅ 8 JSONs de status (anonimizados)
 │   └── *test.cpp
 ├── po/                           # pt_BR.po
 ├── data/
-│   └── tailshare.notifyrc        # eventos de notificação
+│   └── tailshare.notifyrc        # ✅ eventos de notificação (instalado)
 └── packaging/
     └── PKGBUILD
 ```
@@ -262,13 +323,28 @@ inicial.
 **Entregue:** `ctest` passa 100%; validado também contra a tailnet real por um
 binário de smoke descartável (não versionado).
 
-### Fase 2 — Envio validado fora da UI
-`SendJob` completo (ZIP em thread, envio, notificações, limpeza) exercitado por
-`tools/tailshare-probe`: um binário mínimo de linha de comando, **não instalado
-pelo pacote**, que existe só para validar o caminho de envio antes de haver menu.
-Ele vira a semente do helper desanexado da v2.
-**Pronto quando:** enviar arquivo, pasta e seleção mista para um dispositivo real
-funciona, e as notificações (comprimindo / enviando / ok / erro) aparecem certas.
+### ✅ Fase 2 — Envio validado fora da UI (concluída)
+`Archiver`, `SendJob`, `SendMessages` (`tailshare_send`) e `SendNotifier`
+(`tailshare_notify`), mais o `tools/tailshare-probe` e o `data/tailshare.notifyrc`
+— este último antecipado da Fase 4 porque sem ele não havia como conferir as
+notificações. **23 casos QTest novos** (`archivertest`, `sendjobtest`), 83 no
+total em 7 binários, `ctest` 100%.
+
+**Verificado contra a tailnet real** (peer `home-tuzin`, tailscale v1.102.2),
+depois de `sudo tailscale set --operator=$USER` (3.5):
+
+| Caso | Resultado |
+|---|---|
+| dois arquivos avulsos, um chamado `-v` e outro com espaço | `Sent 2 files`, 711 ms, sem ZIP |
+| uma pasta com subpasta, acento e 200 KB binários | `pasta de teste.zip`, 976 ms |
+| seleção mista (pasta + dois arquivos) | `probe.zip` com os três, 691 ms |
+| notificações | medidas no barramento DBus: progresso só acima de 400 ms, `CloseNotification` antes da final, e os eventos `sending`/`sent`/`error` do `.notifyrc` resolvem |
+
+Os caminhos lentos foram exercitados com um tailscale falso (`--program`):
+cancelamento no meio do envio termina em `Canceled` com `terminate()`, e
+`--timeout 1000` sobre um envio de 3 s falha aos ~950 ms. O que **não** foi
+verificado: o conteúdo dos arquivos no dispositivo que recebeu — a evidência
+aqui é o `exit 0` do `tailscale file cp`, que significa peer aceitou.
 
 ### Fase 3 — Plugin do menu
 Plugin, metadados JSON (`application/octet-stream` + `inode/directory`), regras de
@@ -283,9 +359,10 @@ ponta, o menu não trava com Tailscale parado (`tailscale down`), e o
 comportamento ao fechar o Dolphin está definido e documentado.
 
 ### Fase 4 — i18n e empacotamento
-`i18n()` em todas as strings, `pt_BR.po`, `.notifyrc` em `KDE_INSTALL_KNOTIFYRCDIR`,
-`PKGBUILD`, instruções de instalação/desinstalação no README (incluindo como
-desligar o plugin pelo grupo `[Show]` do `kservicemenurc`).
+`pt_BR.po` e extração do catálogo (as strings já nascem em `i18n()`; o
+`.notifyrc` já está instalado desde a Fase 2, falta traduzir os nomes dos
+eventos), `PKGBUILD`, instruções de instalação/desinstalação no README
+(incluindo como desligar o plugin pelo grupo `[Show]` do `kservicemenurc`).
 **Pronto quando:** `makepkg -si` instala, o plugin carrega após reiniciar o
 Dolphin (sem `kbuildsycoca6` — ver 3.3), e a UI aparece em pt-BR com locale pt_BR.
 
@@ -301,10 +378,14 @@ e sem login, para corrigir as fixtures `stopped.json` e `needs-login.json` (3.4)
 
 ## 7. Dependências
 
-**Build:** `extra-cmake-modules` (instalado), `cmake`, `g++`, Qt 6.11 — mais
-`Qt6::Test` para a suíte (`BUILD_TESTING`, ligado por padrão via ECM).
+**Build:** `extra-cmake-modules` (instalado), `cmake`, `g++`, Qt 6.11 —
+`Qt6::Core`, `Qt6::Concurrent` (compactar fora da thread principal) e
+`Qt6::Gui` (arrastado pelo KNotifications, ver 3.5); mais `Qt6::Test` para a
+suíte (`BUILD_TESTING`, ligado por padrão via ECM).
 **KF6 (já presentes):** KIO 6.28, KCoreAddons, KI18n, KNotifications, KArchive, KWidgetsAddons.
-**Runtime:** `tailscale` ≥ 1.102 no PATH; Plasma 6, Dolphin 26.04.
+**Runtime:** `tailscale` ≥ 1.102 no PATH; Plasma 6, Dolphin 26.04 — e o usuário
+precisa ser *operator* do tailscaled (`sudo tailscale set --operator=$USER`),
+senão todo envio é recusado com `Access denied` (3.5).
 
 ---
 
@@ -318,7 +399,8 @@ e sem login, para corrigir as fixtures `stopped.json` e `needs-login.json` (3.4)
 | Envio morre ao fechar o Dolphin (decisão da v1) | Spike do aviso de fechamento na Fase 3; plano B é notificar o cancelamento; solução definitiva é o helper da v2 |
 | Event filter na janela do host é API não suportada e pode quebrar entre versões do Dolphin | Isolado num único ponto do código, com fallback já decidido; nunca bloqueia o fechamento se falhar |
 | Peer aparece online mas o envio falha | Erro real do tailscale repassado íntegro na notificação |
-| Envio a peer offline fica pendurado (a CLI tenta assim mesmo, `file.go:235`) | Itens offline já vêm desabilitados; o `SendJob` ainda assim aplica timeout e reporta |
+| Envio a peer offline fica pendurado (a CLI tenta assim mesmo, `file.go:235`) | Itens offline já vêm desabilitados; o timeout do `SendJob` existe mas fica **desligado** por padrão (ver 3.5) — a saída é a ação *Cancel* da notificação |
+| Usuário não é *operator* do tailscaled e todo envio falha | A mensagem do tailscale é repassada íntegra e já ensina o comando; documentado como pré-requisito no README |
 | Plugin não aparece por MIME não casado | Casos de MIME viram checklist explícito da Fase 3 |
 | Plugin novo não é detectado | Documentar reinício do Dolphin no README (sycoca não se aplica) |
 | Usuário desabilita o plugin sem querer | Documentar o grupo `[Show]` do `kservicemenurc` no README |
@@ -356,6 +438,17 @@ Resolvidos desde a versão anterior:
   a nós *tagged*
 - `tailscale file cp --help`, `tailscale status --json` e medição de latência
   nesta máquina
+
+**KDE Frameworks 6 — Fase 2** (6.28 instalado):
+- `/usr/include/KF6/KNotifications/knotification.h` — `KNotificationAction`
+  (l. 30), sobrecargas de `event()` (l. 798-803), `Persistent` (l. 174),
+  `update()` privado (l. 649)
+- `/usr/lib/cmake/KF6Notifications/KF6NotificationsTargets.cmake:72` — dependência de `Qt6::Gui`
+- `/usr/include/KF6/KArchive/karchive.h` — `addLocalFile` (l. 138),
+  `addLocalDirectory` (l. 153), `errorString()` (l. 91)
+- `dbus-monitor --session` em `org.freedesktop.Notifications` durante três
+  execuções do `tailshare-probe --notify` (job rápido, job de 3 s, cancelamento)
+- `/usr/share/ECM/kde-modules/KDEInstallDirs6.cmake:291` — `KNOTIFYRCDIR`
 
 **KDE Frameworks 6** (KIO 6.28 instalado + fonte upstream):
 - `/usr/include/KF6/KIOWidgets/kabstractfileitemactionplugin.h` — contrato de

@@ -1,0 +1,26 @@
+# SPDX-FileCopyrightText: 2026 Arthur Silva
+# SPDX-License-Identifier: GPL-2.0-or-later
+#
+# Notification events raised by tailshare. The component name here
+# ("tailshare") is the one SendNotifier passes to KNotification; the names below
+# are what the user sees in System Settings -> Notifications.
+
+[Global]
+IconName=document-send
+Name=Share via Tailscale
+Comment=Sending files to tailnet devices over Taildrop
+
+[Event/sending]
+Name=Sending files
+Comment=A transfer is being prepared or is in progress
+Action=Popup
+
+[Event/sent]
+Name=Files sent
+Comment=A transfer finished successfully
+Action=Popup
+
+[Event/error]
+Name=Send failed
+Comment=A transfer failed or was canceled
+Action=Popup
